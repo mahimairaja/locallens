@@ -1,10 +1,20 @@
 """Configuration constants for LocalLens."""
 
+import os
 from pathlib import Path
 
-# Qdrant
+# Qdrant Edge (embedded, on-device)
 QDRANT_PATH = Path.home() / ".locallens" / "qdrant_data"
 COLLECTION_NAME = "locallens"
+# Named vector key — must match the backend's `settings.vector_name`
+# so CLI ↔ Docker Qdrant sync produces a compatible schema.
+VECTOR_NAME = "text"
+
+# Optional sync to a Qdrant server (enables CLI push-sync during indexing and
+# `locallens sync pull` for restoring from a server snapshot). When unset,
+# the CLI stays fully offline.
+QDRANT_SYNC_URL = os.environ.get("QDRANT_SYNC_URL")
+QDRANT_SYNC_API_KEY = os.environ.get("QDRANT_SYNC_API_KEY")
 
 # Embeddings
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"

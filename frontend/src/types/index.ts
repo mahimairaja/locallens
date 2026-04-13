@@ -18,6 +18,8 @@ export interface IndexProgress {
 export interface SearchRequest {
   query: string;
   top_k: number;
+  file_type?: string | null;
+  path_prefix?: string | null;
 }
 
 export interface SearchResult {

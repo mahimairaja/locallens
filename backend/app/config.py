@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     collection_name: str = "locallens"
     vector_size: int = 384
+    # Named vector key — must match ``locallens.config.VECTOR_NAME`` on the
+    # CLI side so points move between the Edge shard and the server cleanly.
+    vector_name: str = "text"
 
     embedding_model: str = "all-MiniLM-L6-v2"
 

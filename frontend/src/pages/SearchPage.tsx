@@ -9,10 +9,28 @@ import { Search, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { SearchResult, SearchResponse } from "@/types";
 
+const FILE_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "",      label: "All types" },
+  { value: ".txt",  label: ".txt"  },
+  { value: ".md",   label: ".md"   },
+  { value: ".pdf",  label: ".pdf"  },
+  { value: ".docx", label: ".docx" },
+  { value: ".py",   label: ".py"   },
+  { value: ".js",   label: ".js"   },
+  { value: ".ts",   label: ".ts"   },
+  { value: ".go",   label: ".go"   },
+  { value: ".rs",   label: ".rs"   },
+  { value: ".java", label: ".java" },
+  { value: ".c",    label: ".c"    },
+  { value: ".cpp",  label: ".cpp"  },
+  { value: ".rb",   label: ".rb"   },
+];
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [topK, setTopK] = useState(10);
+  const [fileType, setFileType] = useState<string>("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchTime, setSearchTime] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,7 +43,7 @@ export default function SearchPage() {
       setLoading(true);
       setHasSearched(true);
       try {
-        const resp: SearchResponse = await api.search(q, topK);
+        const resp: SearchResponse = await api.search(q, topK, fileType || null);
         setResults(resp.results);
         setSearchTime(resp.search_time_ms);
       } catch {
@@ -34,7 +52,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     },
-    [topK]
+    [topK, fileType]
   );
 
   // Auto-search from URL param
@@ -46,7 +64,7 @@ export default function SearchPage() {
     }
   }, [searchParams, doSearch]);
 
-  // Debounced search-as-you-type
+  // Debounced search-as-you-type — also re-runs when filter state changes.
   useEffect(() => {
     if (query.trim().length < 3) return;
     const timer = setTimeout(() => doSearch(query), 300);
@@ -60,7 +78,15 @@ export default function SearchPage() {
     const parts = text.split(regex);
     return parts.map((part, i) =>
       regex.test(part) ? (
-        <mark key={i} className="bg-primary/30 text-foreground rounded px-0.5">
+        <mark
+          key={i}
+          style={{
+            background: "var(--accent-soft)",
+            color: "var(--text-primary)",
+            borderRadius: "3px",
+            padding: "0 3px",
+          }}
+        >
           {part}
         </mark>
       ) : (
@@ -69,36 +95,100 @@ export default function SearchPage() {
     );
   };
 
+  const typeTabClass = (ext: string) => {
+    const e = ext.replace(".", "").toLowerCase();
+    if (e === "pdf") return "sk-tab-pdf";
+    if (e === "py") return "sk-tab-py";
+    if (e === "md") return "sk-tab-md";
+    if (e === "docx") return "sk-tab-docx";
+    if (e === "txt") return "sk-tab-txt";
+    if (e === "js") return "sk-tab-js";
+    if (e === "ts") return "sk-tab-ts";
+    return "sk-tab-default";
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <h2
+        className="text-2xl"
+        style={{
+          fontFamily: "var(--font-sans)",
+          fontWeight: 600,
+          color: "var(--text-primary)",
+          letterSpacing: "-0.015em",
+        }}
+      >
+        Search
+      </h2>
+
       {/* Search Bar */}
-      <div className="space-y-3">
+      <div className="space-y-5">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2"
+            style={{ color: "var(--text-tertiary)" }}
+            strokeWidth={2}
+          />
           <Input
             placeholder="Search your files..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && doSearch(query)}
-            className="pl-10 text-base"
+            style={{
+              paddingLeft: "3.25rem",
+              paddingRight: "1.25rem",
+              height: "56px",
+              fontSize: "1.05rem",
+              fontStyle: query ? "normal" : "italic",
+              boxShadow: "var(--shadow-sm)",
+            }}
           />
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <label className="flex items-center gap-2">
-            Results:
+        <div
+          className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"
+          style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
+        >
+          <label className="flex items-center gap-3">
+            <span style={{ fontWeight: 500 }}>Results</span>
             <input
               type="range"
               min={1}
               max={20}
               value={topK}
               onChange={(e) => setTopK(Number(e.target.value))}
-              className="w-24"
+              className="w-32"
+              style={{ accentColor: "var(--accent)" }}
             />
-            <span className="w-6 text-foreground">{topK}</span>
+            <span className="sk-meter">{topK}</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <span style={{ fontWeight: 500 }}>File type</span>
+            <select
+              value={fileType}
+              onChange={(e) => setFileType(e.target.value)}
+              className="text-sm"
+              style={{
+                background: "var(--bg-card)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.35rem 0.65rem",
+                fontFamily: "var(--font-sans)",
+                cursor: "pointer",
+                outline: "none",
+                boxShadow: "var(--shadow-xs)",
+              }}
+            >
+              {FILE_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </label>
           {searchTime !== null && (
             <span className="ml-auto">
-              Found {results.length} results in {searchTime.toFixed(0)}ms
+              {results.length} results · {searchTime.toFixed(0)}ms
             </span>
           )}
         </div>
@@ -111,51 +201,67 @@ export default function SearchPage() {
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="space-y-2">
-                  <div className="h-4 w-48 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-full animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-48 animate-pulse rounded" style={{ background: "var(--bg-hover)" }} />
+                  <div className="h-3 w-full animate-pulse rounded" style={{ background: "var(--bg-hover)" }} />
+                  <div className="h-3 w-3/4 animate-pulse rounded" style={{ background: "var(--bg-hover)" }} />
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : results.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {results.map((r) => (
             <Card
               key={`${r.file_path}-${r.chunk_index}`}
-              className="cursor-pointer transition-colors hover:border-primary/50"
+              className="cursor-pointer"
               onClick={() => setSelectedResult(r)}
             >
-              <CardContent className="p-5">
-                <div className="mb-2 flex items-center gap-3">
-                  <Badge variant="outline" className="text-xs">
-                    #{r.rank}
-                  </Badge>
-                  <span className="font-medium">{r.file_name}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {r.file_type}
-                  </Badge>
-                  <span className="ml-auto text-sm text-muted-foreground">
-                    {(r.score * 100).toFixed(1)}%
+              <CardContent className="p-6">
+                <div className="mb-3 flex items-center gap-3">
+                  <span
+                    className="flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs"
+                    style={{ background: "var(--accent-soft)", color: "var(--accent-hover)", fontWeight: 600 }}
+                  >
+                    {r.rank}
                   </span>
+                  <span
+                    className="text-base"
+                    style={{ color: "var(--text-primary)", fontWeight: 600 }}
+                  >
+                    {r.file_name}
+                  </span>
+                  <Badge className={typeTabClass(r.file_type)}>{r.file_type}</Badge>
+                  <span className="ml-auto sk-meter">{(r.score * 100).toFixed(1)}%</span>
                 </div>
-                <p className="line-clamp-3 text-sm text-muted-foreground">
+                <p
+                  className="line-clamp-3 text-sm"
+                  style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}
+                >
                   {highlightQuery(r.chunk_text.slice(0, 300))}
                 </p>
+                <div
+                  className="mt-3 h-[3px] rounded-full"
+                  style={{
+                    background: `linear-gradient(90deg, var(--accent) 0%, var(--accent) ${Math.max(
+                      2,
+                      Math.round(r.score * 100)
+                    )}%, var(--bg-hover) ${Math.round(r.score * 100)}%, var(--bg-hover) 100%)`,
+                  }}
+                />
               </CardContent>
             </Card>
           ))}
         </div>
       ) : hasSearched ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No results. Try a different query or index more files.
+          <CardContent className="sk-empty">
+            No matches in your files — try another phrase.
           </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+          <CardContent className="sk-empty">
             Enter a search query to find relevant content in your indexed files.
           </CardContent>
         </Card>
@@ -168,16 +274,30 @@ export default function SearchPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle
+              className="flex items-center gap-3"
+              style={{ color: "var(--text-primary)", fontSize: "1.15rem", fontWeight: 600 }}
+            >
               {selectedResult?.file_name}
-              <Badge variant="secondary">{selectedResult?.file_type}</Badge>
+              {selectedResult && (
+                <Badge className={typeTabClass(selectedResult.file_type)}>
+                  {selectedResult.file_type}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground">
+          <p
+            className="text-xs"
+            style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}
+          >
             {selectedResult?.file_path}
           </p>
+          <div className="sk-brass-rule" />
           <ScrollArea className="max-h-96">
-            <pre className="whitespace-pre-wrap text-sm">
+            <pre
+              className="whitespace-pre-wrap text-sm"
+              style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)", lineHeight: 1.55 }}
+            >
               {selectedResult?.chunk_text}
             </pre>
           </ScrollArea>

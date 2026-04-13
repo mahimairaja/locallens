@@ -181,7 +181,9 @@ def index_folder(
         points = [
             PointStruct(
                 id=_point_id(abs_path, i),
-                vector=emb,
+                # Named vector — must match ``settings.vector_name`` so the
+                # backend and the CLI's Qdrant Edge shard share a schema.
+                vector={settings.vector_name: emb},
                 payload={
                     "file_path": abs_path,
                     "file_name": file_path.name,

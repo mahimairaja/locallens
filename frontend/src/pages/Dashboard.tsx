@@ -40,12 +40,15 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-6">
-                <div className="h-16 animate-pulse rounded bg-muted" />
+                <div
+                  className="h-16 animate-pulse rounded"
+                  style={{ background: "var(--bg-hover)" }}
+                />
               </CardContent>
             </Card>
           ))}
@@ -78,18 +81,38 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <h2
+        className="text-2xl"
+        style={{ fontFamily: "var(--font-sans)", fontWeight: 600, color: "var(--text-primary)", letterSpacing: "-0.015em" }}
+      >
+        Dashboard
+      </h2>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
           <Card key={card.title}>
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-lg bg-primary/10 p-3">
-                <card.icon className="h-5 w-5 text-primary" />
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-full"
+                style={{ background: "var(--accent-soft)" }}
+              >
+                <card.icon className="h-5 w-5" style={{ color: "var(--accent)" }} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{card.title}</p>
-                <p className="text-2xl font-bold">{card.value}</p>
+                <p
+                  className="text-[0.7rem] uppercase"
+                  style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontWeight: 500, letterSpacing: "0.08em" }}
+                >
+                  {card.title}
+                </p>
+                <p
+                  className="text-[1.75rem] leading-tight"
+                  style={{ fontFamily: "var(--font-sans)", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em" }}
+                >
+                  {card.value}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -103,16 +126,19 @@ export default function Dashboard() {
             <CardTitle className="text-base">Recent Searches</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {stats.top_searches.slice(0, 10).map((q, i) => (
                 <li key={i}>
                   <button
                     onClick={() =>
                       navigate(`/search?q=${encodeURIComponent(q)}`)
                     }
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors"
+                    style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
-                    <Search className="h-3.5 w-3.5" />
+                    <Search className="h-3.5 w-3.5" style={{ color: "var(--text-tertiary)" }} />
                     {q}
                   </button>
                 </li>
@@ -123,35 +149,39 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card
-          className="cursor-pointer transition-colors hover:border-primary/50"
-          onClick={() => navigate("/index")}
-        >
-          <CardContent className="flex items-center gap-3 p-6">
-            <FolderSync className="h-5 w-5 text-primary" />
-            <span className="font-medium">Index a Folder</span>
-          </CardContent>
-        </Card>
-        <Card
-          className="cursor-pointer transition-colors hover:border-primary/50"
-          onClick={() => navigate("/search")}
-        >
-          <CardContent className="flex items-center gap-3 p-6">
-            <Search className="h-5 w-5 text-primary" />
-            <span className="font-medium">Search Files</span>
-          </CardContent>
-        </Card>
-        <Card
-          className="cursor-pointer transition-colors hover:border-primary/50"
-          onClick={() => navigate("/ask")}
-        >
-          <CardContent className="flex items-center gap-3 p-6">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            <span className="font-medium">Ask a Question</span>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        {[
+          { icon: FolderSync, label: "Index a Folder", to: "/index" },
+          { icon: Search,     label: "Search Files",   to: "/search" },
+          { icon: MessageSquare, label: "Ask a Question", to: "/ask" },
+        ].map((action) => (
+          <Card
+            key={action.to}
+            className="cursor-pointer"
+            onClick={() => navigate(action.to)}
+          >
+            <CardContent className="flex items-center gap-4 p-6">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-full"
+                style={{ background: "var(--accent-soft)" }}
+              >
+                <action.icon className="h-5 w-5" style={{ color: "var(--accent)" }} strokeWidth={2} />
+              </div>
+              <span
+                className="text-base"
+                style={{ fontFamily: "var(--font-sans)", color: "var(--text-primary)", fontWeight: 500 }}
+              >
+                {action.label}
+              </span>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+
+      {/* Empty state when no files yet */}
+      {(stats?.total_files ?? 0) === 0 && (
+        <p className="sk-empty">No files indexed yet — head to Index to get started.</p>
+      )}
     </div>
   );
 }

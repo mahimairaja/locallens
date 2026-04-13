@@ -1,14 +1,18 @@
 .PHONY: setup dev stop
 
+VENV := .venv
+UVICORN := $(VENV)/bin/uvicorn
+
 setup:
 	docker compose up -d qdrant
 	ollama pull qwen2.5:3b
-	cd backend && pip install -r requirements.txt
+	test -d $(VENV) || uv venv $(VENV)
+	uv pip install --python $(VENV)/bin/python -r backend/requirements.txt
 	cd frontend && npm install
 
 dev:
 	docker compose up -d qdrant
-	cd backend && uvicorn app.main:app --reload --port 8000 &
+	cd backend && ../$(UVICORN) app.main:app --reload --port 8000 &
 	cd frontend && npm run dev
 
 stop:

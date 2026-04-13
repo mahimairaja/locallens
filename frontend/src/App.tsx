@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
 import IndexPage from "@/pages/IndexPage";
 import SearchPage from "@/pages/SearchPage";
 import AskPage from "@/pages/AskPage";
-import VoicePage from "@/pages/VoicePage";
+import StackPage from "@/pages/StackPage";
 
 function App() {
   return (
@@ -15,7 +15,10 @@ function App() {
           <Route path="/index" element={<IndexPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/ask" element={<AskPage />} />
-          <Route path="/voice" element={<VoicePage />} />
+          <Route path="/stack" element={<StackPage />} />
+          {/* Voice is now merged into /ask — keep /voice pointing there for
+              anyone who bookmarked the old route. */}
+          <Route path="/voice" element={<Navigate to="/ask" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

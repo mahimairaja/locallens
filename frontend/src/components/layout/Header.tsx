@@ -5,7 +5,7 @@ const pageTitles: Record<string, string> = {
   "/index": "Index Files",
   "/search": "Search",
   "/ask": "Ask",
-  "/voice": "Voice",
+  "/stack": "Stack",
 };
 
 export function Header() {
@@ -13,8 +13,8 @@ export function Header() {
   const title = pageTitles[location.pathname] ?? "LocalLens";
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-background/80 px-6 backdrop-blur-sm">
-      <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+    <header className="sk-header">
+      <h1>{title}</h1>
     </header>
   );
 }

@@ -21,6 +21,8 @@ class IndexProgress(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 10
+    file_type: Optional[str] = None
+    path_prefix: Optional[str] = None
 
 
 class SearchResult(BaseModel):

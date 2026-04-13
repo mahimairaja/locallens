@@ -39,14 +39,21 @@ graph LR
 
 | Component | Choice |
 |-----------|--------|
-| Vector DB | Qdrant Edge (embedded, on-disk) |
-| Embeddings | `all-MiniLM-L6-v2` via sentence-transformers (384-dim) |
+| CLI vector store | [Qdrant Edge](https://qdrant.tech/documentation/edge/) via `qdrant-edge-py` (embedded, on-device) |
+| Web backend store | Qdrant server (`qdrant/qdrant:v1.14.0`, Docker) via `qdrant-client` |
+| CLI ↔ server sync | Push on index + snapshot pull — see `locallens/sync.py` |
+| Embeddings | `all-MiniLM-L6-v2` via sentence-transformers (384-dim, cosine) |
+| Named vector | `"text"` — same key on both sides for schema-compatible sync |
 | LLM | Ollama with `qwen2.5:3b` (Q4_K_M) |
-| STT | Moonshine v2 base via `moonshine-voice` |
-| TTS | Kokoro-82M via `kokoro-onnx` |
-| VAD | Silero VAD (bundled with moonshine-voice) |
+| STT | Moonshine `tiny-en` via `moonshine-voice` |
+| TTS | Moonshine TextToSpeech (`en-us`) via `moonshine-voice` |
 | CLI | Typer + Rich |
-| Audio I/O | sounddevice + numpy |
+| Backend | FastAPI (async), WebSockets for index progress, SSE for ask streaming |
+| Frontend | React 19 + Vite 8 + Tailwind 4 + shadcn/base-ui |
+
+Curious which Qdrant Edge features LocalLens actually leverages? The running
+app has an **/stack** page that documents every feature inline with the real
+call sites — open <http://localhost:5173/stack> after `make dev`.
 
 ## Quickstart
 
@@ -54,6 +61,7 @@ graph LR
 
 - Python 3.11+
 - [Ollama](https://ollama.ai) installed and running (for `ask` and `voice` commands)
+- Docker + Docker Compose (for the web app — optional if you only use the CLI)
 
 ```bash
 # Pull the LLM model
@@ -66,23 +74,55 @@ pip install -e .
 pip install -e ".[voice]"
 ```
 
-### Usage
+### Usage — CLI only (fully offline)
 
 ```bash
 # Index your documents
 locallens index ~/Documents
 
-# Semantic search
+# Semantic search (optionally scoped by file type)
 locallens search "quarterly revenue report"
+locallens search "authentication" --file-type .py
 
 # Ask questions (requires Ollama)
 locallens ask "What did the Q3 report say about revenue?"
 
-# Voice mode (requires voice dependencies)
-locallens voice
-
-# View stats
+# View stats (includes a file-type facet breakdown from Qdrant Edge)
 locallens stats
+```
+
+### Usage — CLI + web app (push-sync to a shared Qdrant)
+
+```bash
+# Start the web stack (Qdrant + FastAPI + Vite)
+make setup   # first run only
+make dev
+
+# Point the CLI at the Docker Qdrant and index. Each batch is dual-written
+# to the local Edge shard AND pushed to the server, so the web app at
+# http://localhost:5173 sees the same data instantly.
+export QDRANT_SYNC_URL=http://localhost:6333
+locallens index ~/Documents
+
+# If you index without sync enabled and want the server to catch up:
+locallens sync push
+
+# Restore the local shard from a server snapshot (e.g. on a new machine):
+locallens sync pull
+locallens sync pull --incremental   # only transfer changed segments
+```
+
+### Upgrading from the pre-Edge embedded store
+
+Earlier versions of LocalLens used `qdrant-client`'s legacy embedded mode,
+which isn't compatible with the new Qdrant Edge storage format. If you have
+an existing local index:
+
+```bash
+rm -rf ~/.locallens/qdrant_data       # old qdrant-client format
+docker compose down -v                # drop the old unnamed-vector collection
+docker compose up -d qdrant
+locallens index ~/Documents           # rebuild
 ```
 
 ## Memory Usage

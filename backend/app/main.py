@@ -2,12 +2,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import index, search, ask, voice, files, stats
+from app.routers import index, search, ask, voice, files, stats, fs
+from app.services import voice_stt, voice_tts
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup — attempt to load voice models (no-op if deps missing)
+    voice_stt.load_model()
+    voice_tts.load_model()
     yield
     # Shutdown
 
@@ -28,6 +31,7 @@ app.include_router(ask.router, prefix="/api")
 app.include_router(voice.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
+app.include_router(fs.router, prefix="/api")
 
 
 @app.get("/api/health")

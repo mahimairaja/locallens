@@ -16,6 +16,74 @@ app = typer.Typer(
 )
 console = Console()
 
+sync_app = typer.Typer(
+    name="sync",
+    help="Sync the local Qdrant Edge shard with a remote Qdrant server.",
+    no_args_is_help=True,
+)
+app.add_typer(sync_app)
+
+
+@sync_app.command("pull")
+def sync_pull(
+    incremental: bool = typer.Option(
+        False,
+        "--incremental",
+        help="Only transfer segments that have changed since the last pull.",
+    ),
+) -> None:
+    """Pull a shard snapshot from the remote Qdrant server into the local shard."""
+    from locallens import sync
+
+    try:
+        if incremental:
+            sync.pull_partial()
+            console.print("[green]Partial snapshot applied.[/green]")
+        else:
+            sync.pull()
+            console.print("[green]Full snapshot restored.[/green]")
+    except Exception as exc:
+        console.print(f"[red]Sync pull failed: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+
+@sync_app.command("push")
+def sync_push() -> None:
+    """Push every locally indexed point to the remote Qdrant server.
+
+    Useful if indexing was run without ``QDRANT_SYNC_URL`` set and you now
+    want the server to catch up. Scrolls the local shard and uploads in
+    batches of 100.
+    """
+    from qdrant_edge import ScrollRequest
+
+    from locallens import store as st
+    from locallens import sync
+
+    st.init()
+    shard = st.get_shard()
+    total = 0
+    offset = None
+    while True:
+        points, next_offset = shard.scroll(
+            ScrollRequest(limit=256, offset=offset, with_payload=True, with_vector=True)
+        )
+        batch = []
+        for p in points:
+            vec = None
+            if isinstance(p.vector, dict):
+                from locallens.config import VECTOR_NAME
+                vec = p.vector.get(VECTOR_NAME)
+            if vec is None:
+                continue
+            batch.append({"id": str(p.id), "vector": list(vec), "payload": dict(p.payload or {})})
+        if batch:
+            total += sync.push(batch)
+        if next_offset is None:
+            break
+        offset = next_offset
+    console.print(f"[green]Pushed {total} points.[/green]")
+
 
 @app.command()
 def index(
@@ -36,6 +104,12 @@ def index(
 def search(
     query: str = typer.Argument(..., help="The search query."),
     top_k: int = typer.Option(DEFAULT_TOP_K, "--top-k", help="Number of results to return."),
+    file_type: Optional[str] = typer.Option(
+        None, "--file-type", help="Only return results for this extension, e.g. .pdf"
+    ),
+    path_prefix: Optional[str] = typer.Option(
+        None, "--path-prefix", help="Only return results whose file_path matches exactly."
+    ),
 ) -> None:
     """Semantic search over your indexed files."""
     from locallens import store as st
@@ -46,7 +120,7 @@ def search(
         console.print("[yellow]No files indexed yet. Run `locallens index <folder>` first.[/yellow]")
         raise typer.Exit()
 
-    results = do_search(query, top_k)
+    results = do_search(query, top_k, file_type=file_type, path_prefix=path_prefix)
 
     if not results:
         console.print("[yellow]No results found.[/yellow]")
@@ -150,3 +224,13 @@ def stats() -> None:
 
     table.add_row("Disk usage", disk_usage)
     console.print(table)
+
+    # File-type breakdown via Edge facet.
+    file_types = st.facet_file_types(limit=20)
+    if file_types:
+        breakdown = Table(title="File type breakdown", show_edge=True)
+        breakdown.add_column("Type", style="cyan")
+        breakdown.add_column("Chunks", justify="right")
+        for value, count in file_types:
+            breakdown.add_row(value, str(count))
+        console.print(breakdown)

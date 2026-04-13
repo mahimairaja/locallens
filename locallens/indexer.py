@@ -1,4 +1,4 @@
-"""File indexer: walk folder, extract, chunk, embed, upsert into Qdrant."""
+"""File indexer: walk folder, extract, chunk, embed, upsert into Qdrant Edge."""
 
 import hashlib
 import time
@@ -6,7 +6,6 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from qdrant_client.models import PointStruct
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
@@ -15,6 +14,7 @@ from locallens.config import (
     CHUNK_OVERLAP,
     CHUNK_SIZE,
     MAX_FILE_SIZE_MB,
+    QDRANT_SYNC_URL,
     SKIP_HIDDEN,
     SUPPORTED_EXTENSIONS,
 )
@@ -47,11 +47,12 @@ def _point_id(file_path: str, chunk_index: int) -> str:
 
 
 def index_folder(folder: Path, force: bool = False) -> None:
-    """Index all supported files in the given folder into Qdrant."""
-    store.init()
+    """Index all supported files in the given folder into Qdrant Edge.
 
-    # Gather existing hashes for dedup
-    existing_hashes: set[str] = set() if force else store.get_all_hashes()
+    Dedup is per-file via the ``file_hash`` payload index: a single filtered
+    ``count`` call per file replaces the old O(n) pre-pass scroll.
+    """
+    store.init()
 
     # Collect files to process
     all_files: list[Path] = []
@@ -71,6 +72,10 @@ def index_folder(folder: Path, force: bool = False) -> None:
     total_chunks = 0
     skipped = 0
     start = time.time()
+
+    # Optional push-sync — when QDRANT_SYNC_URL is set, indexed points are
+    # dual-written to a remote Qdrant server so the web backend sees them.
+    sync_queue: list[dict] | None = [] if QDRANT_SYNC_URL else None
 
     with Progress(
         SpinnerColumn(),
@@ -96,7 +101,8 @@ def index_folder(folder: Path, force: bool = False) -> None:
                 progress.advance(task)
                 continue
 
-            if not force and fhash in existing_hashes:
+            # O(1) dedup via the file_hash payload index (Phase 2 migration).
+            if not force and store.has_hash(fhash):
                 skipped += 1
                 progress.advance(task)
                 continue
@@ -121,10 +127,10 @@ def index_folder(folder: Path, force: bool = False) -> None:
             abs_path = str(file_path.resolve())
 
             points = [
-                PointStruct(
-                    id=_point_id(abs_path, i),
-                    vector=emb,
-                    payload={
+                {
+                    "id": _point_id(abs_path, i),
+                    "vector": list(emb) if not isinstance(emb, list) else emb,
+                    "payload": {
                         "file_path": abs_path,
                         "file_name": file_path.name,
                         "file_type": file_path.suffix.lower(),
@@ -133,14 +139,15 @@ def index_folder(folder: Path, force: bool = False) -> None:
                         "file_hash": fhash,
                         "indexed_at": now,
                     },
-                )
+                }
                 for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
             ]
 
             store.upsert_batch(points)
+            if sync_queue is not None:
+                sync_queue.extend(points)
             indexed_files += 1
             total_chunks += len(chunks)
-            existing_hashes.add(fhash)
 
             progress.advance(task)
 
@@ -149,3 +156,15 @@ def index_folder(folder: Path, force: bool = False) -> None:
         f"\n[green]Indexed {indexed_files} files ({total_chunks} chunks) "
         f"in {elapsed:.1f}s. Skipped {skipped} unchanged files.[/green]"
     )
+
+    # Flush push-sync queue at the end of indexing.
+    if sync_queue:
+        from locallens import sync as _sync
+
+        try:
+            pushed = _sync.push(sync_queue)
+            console.print(
+                f"[cyan]Synced {pushed} points to {QDRANT_SYNC_URL}[/cyan]"
+            )
+        except Exception as exc:
+            console.print(f"[yellow]Sync failed: {exc}[/yellow]")

@@ -9,7 +9,12 @@ _recent_searches: list[str] = []
 
 @router.post("/search", response_model=SearchResponse)
 async def do_search(req: SearchRequest):
-    result = search(req.query, req.top_k)
+    result = search(
+        req.query,
+        req.top_k,
+        file_type=req.file_type,
+        path_prefix=req.path_prefix,
+    )
     # Track recent searches
     _recent_searches.insert(0, req.query)
     if len(_recent_searches) > 20:

@@ -1,0 +1,651 @@
+/* ============================================================
+   LocalLens — Light Mode (warm, clean, modern)
+   ------------------------------------------------------------
+   Warm off-white surfaces, white cards, copper accent, Inter
+   typography, subtle shadows. No textures, no rotations, no
+   heavy skeuomorphic effects.
+   ------------------------------------------------------------
+   NOTE: Legacy class names from the previous skeuomorphic
+   theme (.sk-*, .bg-wood, .bg-leather, .bg-paper-ruled, etc.)
+   are kept as flat no-ops mapped to the light palette so that
+   existing page markup keeps working without a large rewrite.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ---------- Palette (applies to both :root and .dark since
+   index.html has html.dark — we redefine what "dark" means.) */
+:root,
+.dark {
+  /* New semantic tokens from the spec */
+  --bg-page:           #FAFAF8;   /* warm off-white page */
+  --bg-card:           #FFFFFF;   /* white cards */
+  --bg-sidebar:        #F5F2EE;   /* warm light gray sidebar */
+  --bg-sidebar-active: #FFFFFF;
+  --bg-hover:          #F0EDE8;   /* warm hover tint */
+  --bg-input:          #FFFFFF;
+  --bg-accent-light:   #FDF0E2;   /* light copper tint */
+
+  --accent:        #C67B3C;   /* copper — the brand */
+  --accent-hover:  #B06A2F;
+  --accent-soft:   #F5E6D3;
+
+  --text-primary:   #1C1917;
+  --text-secondary: #78716C;
+  --text-tertiary:  #A8A29E;
+  --text-on-accent: #FFFFFF;
+
+  --border:        #E7E5E4;
+  --border-strong: #D6D3D1;
+
+  --success: #16A34A;
+  --danger:  #DC2626;
+  --warning: #D97706;
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.03);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* ---- Legacy token remap for backward compatibility ----
+     Pages still reference these via var(--ink), var(--paper),
+     etc. — point them at the light palette so they render
+     correctly without every inline style being rewritten. */
+  --wood:          var(--bg-page);
+  --wood-deep:     var(--bg-sidebar);
+  --paper:         var(--bg-card);
+  --paper-alt:     var(--bg-page);
+  --paper-edge:    var(--border);
+  --brass:         var(--accent);
+  --brass-deep:    var(--accent-hover);
+  --brass-light:   var(--accent);
+  --leather-green: var(--success);
+  --ink:           var(--text-primary);
+  --ink-muted:     var(--text-secondary);
+  --cream:         var(--text-primary);
+  --worn-red:      var(--danger);
+  --amber:         var(--warning);
+
+  /* shadcn token remap → clean light theme */
+  --background:            var(--bg-page);
+  --foreground:            var(--text-primary);
+  --card:                  var(--bg-card);
+  --card-foreground:       var(--text-primary);
+  --popover:               var(--bg-card);
+  --popover-foreground:    var(--text-primary);
+  --primary:               var(--accent);
+  --primary-foreground:    var(--text-on-accent);
+  --secondary:             var(--bg-hover);
+  --secondary-foreground:  var(--text-primary);
+  --muted:                 var(--bg-hover);
+  --muted-foreground:      var(--text-secondary);
+  --accent-foreground:     var(--text-on-accent);
+  --destructive:           var(--danger);
+  --border:                #E7E5E4;
+  --input:                 #E7E5E4;
+  --ring:                  var(--accent);
+
+  --chart-1: var(--accent);
+  --chart-2: var(--success);
+  --chart-3: var(--warning);
+  --chart-4: #78716C;
+  --chart-5: var(--danger);
+
+  /* Sidebar tokens — light warm gray */
+  --sidebar:                    var(--bg-sidebar);
+  --sidebar-foreground:         var(--text-primary);
+  --sidebar-primary:            var(--accent);
+  --sidebar-primary-foreground: var(--text-on-accent);
+  --sidebar-accent:             var(--bg-hover);
+  --sidebar-accent-foreground:  var(--text-primary);
+  --sidebar-border:             var(--border);
+  --sidebar-ring:               var(--accent);
+
+  /* Typography — all Inter (no serif) */
+  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+  --radius: 0.625rem;
+}
+
+html {
+  color-scheme: light;
+}
+html, body, #root {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4, h5, h6,
+[data-slot="card-title"],
+.font-heading,
+.sk-heading {
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+code, pre, .font-mono, .sk-mono {
+  font-family: var(--font-mono);
+}
+
+/* ============================================================
+   Legacy texture classes → neutralized to flat light surfaces
+   ============================================================ */
+.bg-wood         { background-color: var(--bg-page);    background-image: none; }
+.bg-leather      { background-color: var(--bg-sidebar); background-image: none; }
+.bg-paper        { background-color: var(--bg-card);    background-image: none; }
+.bg-paper-ruled  { background-color: var(--bg-page);    background-image: none; }
+.bg-metal        { background-color: var(--bg-sidebar); background-image: none; }
+.bg-brass        { background-color: var(--accent);     background-image: none; }
+
+/* Shadow utility classes — map to clean light shadows */
+.shadow-paper      { box-shadow: var(--shadow-sm); }
+.shadow-paper-lift { box-shadow: var(--shadow-md); }
+.shadow-inset      { box-shadow: none; }
+.shadow-brass      { box-shadow: var(--shadow-xs); }
+.shadow-led-green  { box-shadow: none; }
+.shadow-led-red    { box-shadow: none; }
+
+/* ============================================================
+   Cards — white, subtle border + shadow, hover lift
+   ============================================================ */
+[data-slot="card"] {
+  background-color: var(--bg-card) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transform: none !important;
+  transition: box-shadow 150ms ease, border-color 150ms ease;
+}
+[data-slot="card"]:hover {
+  box-shadow: var(--shadow-md) !important;
+  border-color: var(--border-strong) !important;
+}
+[data-slot="card-title"] {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+[data-slot="card-description"] {
+  color: var(--text-secondary);
+}
+[data-slot="card"] * { border-color: var(--border); }
+
+/* Neutralize old pseudo-elements (pinned / dog-eared cards) */
+.sk-card-pinned,
+.sk-card-dogear { position: relative; }
+.sk-card-pinned::before,
+.sk-card-dogear::after {
+  content: none !important;
+  display: none !important;
+}
+/* Kill any residual rotation applied via inline style */
+.sk-card-pinned,
+.sk-card-dogear { transform: none !important; }
+
+.sk-card {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 150ms ease;
+}
+.sk-card:hover { box-shadow: var(--shadow-md); }
+
+/* ============================================================
+   Buttons — flat copper primary, white secondary
+   ============================================================ */
+[data-slot="button"] {
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  border-radius: var(--radius-md) !important;
+  transition: background 150ms ease, box-shadow 150ms ease,
+              transform 100ms ease, border-color 150ms ease !important;
+}
+[data-slot="button"][class*="bg-primary"] {
+  background: var(--accent) !important;
+  background-image: none !important;
+  color: var(--text-on-accent) !important;
+  border: 1px solid transparent !important;
+  text-shadow: none !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+[data-slot="button"][class*="bg-primary"]:hover {
+  background: var(--accent-hover) !important;
+  box-shadow: var(--shadow-sm) !important;
+  filter: none;
+}
+[data-slot="button"][class*="bg-primary"]:active {
+  transform: translateY(1px) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+/* ============================================================
+   Inputs — white background, clean border, copper focus ring
+   ============================================================ */
+[data-slot="input"],
+.sk-input {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.6rem 0.85rem;
+  font-family: var(--font-sans) !important;
+  font-size: 0.9rem;
+  height: auto;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+  box-shadow: none !important;
+}
+[data-slot="input"]:focus,
+[data-slot="input"]:focus-visible,
+.sk-input:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(198, 123, 60, 0.08) !important;
+}
+[data-slot="input"]::placeholder,
+.sk-input::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ============================================================
+   Tables — clean, alternating rows, uppercase header
+   ============================================================ */
+[data-slot="table-header"] {
+  background: var(--bg-sidebar);
+}
+[data-slot="table-header"] [data-slot="table-head"] {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  text-shadow: none;
+  background-image: none;
+}
+[data-slot="table-body"] [data-slot="table-row"] {
+  border-bottom: 1px solid var(--border) !important;
+  background-image: none !important;
+  transition: background-color 150ms ease;
+}
+[data-slot="table-body"] [data-slot="table-row"]:nth-child(odd) {
+  background-color: var(--bg-card) !important;
+}
+[data-slot="table-body"] [data-slot="table-row"]:nth-child(even) {
+  background-color: var(--bg-page) !important;
+}
+[data-slot="table-body"] [data-slot="table-row"]:hover {
+  background-color: var(--bg-hover) !important;
+  box-shadow: none;
+}
+[data-slot="table-cell"] {
+  color: var(--text-primary) !important;
+  padding: 0.75rem 1rem !important;
+}
+
+/* ============================================================
+   Badges — rounded pills per file type
+   ============================================================ */
+[data-slot="badge"] {
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  border-radius: 9999px !important;
+  padding: 0.1rem 0.6rem !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.01em;
+}
+.sk-tab-pdf    { background: #FEE2E2 !important; color: #991B1B !important; }
+.sk-tab-py     { background: #DBEAFE !important; color: #1E40AF !important; }
+.sk-tab-md     { background: #D1FAE5 !important; color: #065F46 !important; }
+.sk-tab-docx   { background: #EDE9FE !important; color: #5B21B6 !important; }
+.sk-tab-txt    { background: #F5F5F4 !important; color: #57534E !important; }
+.sk-tab-js     { background: #FEF3C7 !important; color: #92400E !important; }
+.sk-tab-ts     { background: #FEF3C7 !important; color: #92400E !important; }
+.sk-tab-default{ background: var(--accent-soft) !important; color: var(--accent-hover) !important; }
+
+/* ============================================================
+   Scrollbars — subtle light track, gray thumb
+   ============================================================ */
+::-webkit-scrollbar            { width: 10px; height: 10px; }
+::-webkit-scrollbar-track      { background: var(--bg-page); }
+::-webkit-scrollbar-thumb      { background: #D6D3D1; border-radius: 9999px; border: 2px solid var(--bg-page); }
+::-webkit-scrollbar-thumb:hover{ background: #A8A29E; }
+* { scrollbar-width: thin; scrollbar-color: #D6D3D1 var(--bg-page); }
+
+/* ============================================================
+   LED indicator — simple clean colored dot (no glow)
+   ============================================================ */
+.sk-led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--text-tertiary);
+  box-shadow: none;
+}
+.sk-led-green { background: var(--success); box-shadow: none; }
+.sk-led-red   { background: var(--danger);  box-shadow: none; }
+.sk-led-amber { background: var(--warning); box-shadow: none; }
+
+/* ============================================================
+   Sidebar nav items — clean light active states
+   ============================================================ */
+.sk-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.88rem;
+  letter-spacing: 0;
+  background: transparent;
+  text-shadow: none;
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+.sk-nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+.sk-nav-item.active {
+  background: var(--bg-sidebar-active);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+.sk-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  box-shadow: none;
+}
+.sk-nav-item .sk-nav-icon       { color: var(--text-tertiary); }
+.sk-nav-item:hover .sk-nav-icon { color: var(--text-secondary); }
+.sk-nav-item.active .sk-nav-icon{ color: var(--accent); }
+
+/* ============================================================
+   Suggested-question cards (legacy .sk-postit) — clean white
+   cards with copper left accent on hover
+   ============================================================ */
+.sk-postit {
+  position: relative;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transform: none !important;
+  transition: box-shadow 150ms ease, border-color 150ms ease, transform 100ms ease;
+}
+.sk-postit:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-md);
+  border-left: 3px solid var(--accent);
+  padding-left: calc(1.1rem - 2px);
+}
+.sk-postit-yellow,
+.sk-postit-pink,
+.sk-postit-green,
+.sk-postit-blue {
+  background: var(--bg-card) !important;
+  background-image: none !important;
+}
+
+/* ============================================================
+   Source tags (Ask / Voice) — simple light pills
+   ============================================================ */
+.sk-source-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.55rem;
+  background: var(--bg-sidebar);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  box-shadow: none;
+}
+
+/* ============================================================
+   Score / meter pill (search results, index progress)
+   ============================================================ */
+.sk-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.55rem;
+  background: var(--bg-sidebar);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* ============================================================
+   Voice mic button — clean circular button
+   ============================================================ */
+.sk-mic-button {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 9999px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow-md);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 150ms ease;
+  animation: none !important;
+}
+.sk-mic-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--shadow-lg);
+  filter: none;
+}
+.sk-mic-button:active,
+.sk-mic-button.is-recording {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-lg);
+  transform: none;
+  animation: sk-mic-pulse-light 1.8s ease-in-out infinite !important;
+}
+.sk-mic-button.is-recording::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  animation: sk-ring-expand 1.8s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes sk-mic-pulse-light {
+  0%, 100% { box-shadow: var(--shadow-lg); }
+  50%      { box-shadow: var(--shadow-lg), 0 0 0 6px rgba(198, 123, 60, 0.12); }
+}
+@keyframes sk-ring-expand {
+  0%   { opacity: 0.35; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1.4); }
+}
+.sk-mic-button.is-processing {
+  background: var(--bg-card);
+  border-color: var(--accent);
+  color: var(--accent);
+  animation: none !important;
+}
+.sk-mic-button.is-processing::after { content: none !important; }
+
+.sk-vu-frame {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.sk-tape {
+  background: var(--bg-card);
+  background-image: none !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   Gauge — clean horizontal progress bar
+   ============================================================ */
+.sk-gauge {
+  position: relative;
+  height: 8px;
+  background: var(--bg-hover);
+  border: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow: none;
+}
+.sk-gauge-fill {
+  height: 100%;
+  background: var(--accent);
+  background-image: none;
+  box-shadow: none;
+  transition: width 300ms ease;
+}
+
+/* ============================================================
+   Divider — clean line
+   ============================================================ */
+.sk-brass-rule {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+  margin: 0.6rem 0;
+  box-shadow: none;
+}
+
+/* ============================================================
+   Dialog / modal — white card
+   ============================================================ */
+[data-slot="dialog-content"],
+.sk-dialog {
+  background-color: var(--bg-card) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+[data-slot="scroll-area-viewport"] { color: var(--text-primary); }
+
+/* ============================================================
+   Top header of main content — clean white strip
+   ============================================================ */
+.sk-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 1.5rem;
+  background: rgba(250, 250, 248, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.sk-header h1 {
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  margin: 0;
+  text-shadow: none;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   Empty states — clean italic muted text
+   ============================================================ */
+.sk-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+}
+
+/* ============================================================
+   Chart theming (recharts)
+   ============================================================ */
+.recharts-cartesian-grid line {
+  stroke: var(--border) !important;
+  stroke-dasharray: 2 3;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-sans) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.recharts-legend-item-text {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* ============================================================
+   Global transitions
+   ============================================================ */
+button, a, [data-slot="button"], .sk-nav-item, .sk-card, .sk-postit, [data-slot="card"] {
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
