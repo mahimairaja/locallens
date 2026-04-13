@@ -1,20 +1,22 @@
-# LocalLens
+<p align="center">
+  <img src="assets/logo.svg" width="300" alt="LocalLens Logo">
+</p>
 
-**Search your files by talking to them — 100% offline**
+**Search your files by talking to them - 100% offline**
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![Qdrant Edge](https://img.shields.io/badge/Qdrant-Edge-C67B3C)
 
-<!-- Screenshot placeholder — replace with actual screenshot after make dev -->
+<!-- Screenshot placeholder - replace with actual screenshot after make dev -->
 
 ## What It Does
 
-- **Semantic search** — index local files and find them by meaning, not just keywords
-- **RAG Q&A** — ask natural-language questions, get grounded answers from a local LLM
-- **Voice input + playback** — speak your question, hear the answer (optional)
-- **CLI + web app** — fast Typer CLI for power users, React UI for visual browsing
-- **Offline-first** — everything runs on your machine, no cloud APIs, no telemetry
+- **Semantic search** - index local files and find them by meaning, not just keywords
+- **RAG Q&A** - ask natural-language questions, get grounded answers from a local LLM
+- **Voice input + playback** - speak your question, hear the answer (optional)
+- **CLI + web app** - fast Typer CLI for power users, React UI for visual browsing
+- **Offline-first** - everything runs on your machine, no cloud APIs, no telemetry
 
 ## Architecture
 
@@ -55,7 +57,7 @@ graph TB
     end
 ```
 
-**Two stores, one schema.** The CLI uses [Qdrant Edge](https://qdrant.tech/documentation/edge/) (`qdrant-edge-py`) for embedded, on-device vector search — no server needed. The web app talks to a Dockerized Qdrant server via `qdrant-client`. Both use the same named vector (`"text"`, 384-dim, cosine) and keyword payload indexes, so points sync cleanly between them. See the [/stack page](http://localhost:5173/stack) in the running app for a feature-by-feature breakdown.
+**Two stores, one schema.** The CLI uses [Qdrant Edge](https://qdrant.tech/documentation/edge/) (`qdrant-edge-py`) for embedded, on-device vector search - no server needed. The web app talks to a Dockerized Qdrant server via `qdrant-client`. Both use the same named vector (`"text"`, 384-dim, cosine) and keyword payload indexes, so points sync cleanly between them. See the [/stack page](http://localhost:5173/stack) in the running app for a feature-by-feature breakdown.
 
 ## Stack
 
@@ -68,7 +70,7 @@ graph TB
 | LLM | Ollama with `qwen2.5:3b` (Q4_K_M quantized, ~2.2 GB RAM) |
 | STT | Moonshine `tiny-en` via `moonshine-voice` (bundled assets) |
 | TTS | Moonshine TextToSpeech (`en-us`) via `moonshine-voice` |
-| Backend | FastAPI — WebSockets for index progress, SSE for answer streaming |
+| Backend | FastAPI - WebSockets for index progress, SSE for answer streaming |
 | Frontend | React 19 + Vite 8 + Tailwind 4 + shadcn/base-ui |
 | CLI | Typer + Rich |
 
@@ -112,7 +114,7 @@ export QDRANT_SYNC_URL=http://localhost:6333
 locallens index ~/Documents    # dual-writes to local shard AND Docker Qdrant
 ```
 
-The web app sees everything the CLI indexes — instantly, no extra step. See [Sync commands](#sync) below for manual push/pull.
+The web app sees everything the CLI indexes - instantly, no extra step. See [Sync commands](#sync) below for manual push/pull.
 
 ## How It Works
 
@@ -149,9 +151,9 @@ LocalLens leverages these Qdrant Edge capabilities (documented live at [/stack](
 
 | Feature | How we use it |
 |---|---|
-| Named vectors | Both stores declare vector `"text"` — schema-compatible sync |
+| Named vectors | Both stores declare vector `"text"` - schema-compatible sync |
 | Keyword payload indexes | O(1) dedup via `file_hash` index, scoped search via `file_type` |
-| Filtered search | `--file-type .pdf` on CLI, dropdown on web — single indexed query |
+| Filtered search | `--file-type .pdf` on CLI, dropdown on web - single indexed query |
 | Facets | Stats page and `locallens stats` get file-type breakdowns server-side |
 | Push sync (dual-write) | `locallens index` writes locally and uploads to the Docker Qdrant |
 | Snapshot pull | `locallens sync pull` restores a shard from a server snapshot |
