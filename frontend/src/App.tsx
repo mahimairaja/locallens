@@ -5,6 +5,8 @@ import IndexPage from "@/pages/IndexPage";
 import SearchPage from "@/pages/SearchPage";
 import AskPage from "@/pages/AskPage";
 import StackPage from "@/pages/StackPage";
+import SettingsPage from "@/pages/SettingsPage";
+import AuditPage from "@/pages/AuditPage";
 
 function App() {
   return (
@@ -16,7 +18,9 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/ask" element={<AskPage />} />
           <Route path="/stack" element={<StackPage />} />
-          {/* Voice is now merged into /ask — keep /voice pointing there for
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/audit" element={<AuditPage />} />
+          {/* Voice is now merged into /ask -- keep /voice pointing there for
               anyone who bookmarked the old route. */}
           <Route path="/voice" element={<Navigate to="/ask" replace />} />
         </Route>

@@ -13,7 +13,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from app.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ def _pick_folder_linux() -> str | None:
 
 
 @router.post("/fs/pick-folder")
-async def pick_folder():
+async def pick_folder(api_key: str | None = Depends(require_auth)):
     """Open the native OS folder picker and return the chosen absolute path."""
     system = platform.system()
 
@@ -95,6 +96,6 @@ async def pick_folder():
 
 
 @router.get("/fs/home")
-async def home_directory():
+async def home_directory(api_key: str | None = Depends(require_auth)):
     """Return the user's home directory — handy for prefilling the text input."""
     return {"path": str(Path(os.path.expanduser("~")).resolve())}

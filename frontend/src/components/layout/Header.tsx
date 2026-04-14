@@ -6,6 +6,8 @@ const pageTitles: Record<string, string> = {
   "/search": "Search",
   "/ask": "Ask",
   "/stack": "Stack",
+  "/settings": "Settings",
+  "/audit": "Audit Log",
 };
 
 export function Header() {

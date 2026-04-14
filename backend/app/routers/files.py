@@ -1,14 +1,21 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.auth import check_namespace_access, require_auth
+from app.config import collection_for_namespace
 from app.models import IndexedFile
-from app.services import store
+from app.services import audit, store
 from pathlib import Path
 
 router = APIRouter()
 
 
 @router.get("/files", response_model=list[IndexedFile])
-async def list_files():
-    points = store.scroll_all()
+async def list_files(
+    namespace: str = Query("default"),
+    api_key: str | None = Depends(require_auth),
+):
+    check_namespace_access(api_key, namespace)
+    collection = collection_for_namespace(namespace)
+    points = store.scroll_all(collection=collection)
     files_map: dict[str, dict] = {}
     for p in points:
         fp = p.payload.get("file_path", "")
@@ -25,7 +32,7 @@ async def list_files():
 
 
 @router.get("/files/{file_path:path}/content")
-async def get_file_content(file_path: str):
+async def get_file_content(file_path: str, api_key: str | None = Depends(require_auth)):
     path = Path(file_path)
     if not path.exists():
         raise HTTPException(404, "File not found on disk")
@@ -36,8 +43,14 @@ async def get_file_content(file_path: str):
 
 
 @router.get("/files/{file_path:path}/chunks")
-async def get_file_chunks(file_path: str):
-    points = store.scroll_all()
+async def get_file_chunks(
+    file_path: str,
+    namespace: str = Query("default"),
+    api_key: str | None = Depends(require_auth),
+):
+    check_namespace_access(api_key, namespace)
+    collection = collection_for_namespace(namespace)
+    points = store.scroll_all(collection=collection)
     chunks = [
         {"chunk_index": p.payload.get("chunk_index", 0), "chunk_text": p.payload.get("chunk_text", "")}
         for p in points
@@ -47,6 +60,13 @@ async def get_file_chunks(file_path: str):
 
 
 @router.delete("/files/{file_path:path}")
-async def delete_file(file_path: str):
-    store.delete_by_file(file_path)
+async def delete_file(
+    file_path: str,
+    namespace: str = Query("default"),
+    api_key: str | None = Depends(require_auth),
+):
+    check_namespace_access(api_key, namespace)
+    collection = collection_for_namespace(namespace)
+    store.delete_by_file(file_path, collection=collection)
+    audit.log("delete", namespace=namespace, api_key=api_key, detail=file_path)
     return {"deleted": file_path}

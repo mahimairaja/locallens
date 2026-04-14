@@ -78,9 +78,9 @@ export default function AskPage() {
     abortRef.current = controller;
 
     try {
-      const res = await fetch("/api/ask", {
+      const res = await fetch(api.askUrl(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api.askHeaders(),
         body: JSON.stringify({ question, top_k: 3 }),
         signal: controller.signal,
       });

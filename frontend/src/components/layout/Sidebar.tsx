@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderSync,
@@ -8,8 +8,14 @@ import {
   Database,
   Cpu,
   Loader2,
+  Settings,
+  Lock,
+  LockOpen,
+  ScrollText,
+  ChevronDown,
+  Plus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 
 const navItems = [
@@ -26,14 +32,26 @@ interface ServiceStatus {
 }
 
 export function Sidebar() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<ServiceStatus>({
     qdrant: "checking",
     ollama: "checking",
   });
+  const [authStatus, setAuthStatus] = useState<{
+    auth_enabled: boolean;
+    authenticated: boolean;
+  } | null>(null);
+  const [namespaces, setNamespaces] = useState<string[]>(["default"]);
+  const [activeNs, setActiveNs] = useState<string>(
+    localStorage.getItem("locallens_namespace") || "default"
+  );
+  const [nsOpen, setNsOpen] = useState(false);
+  const [newNs, setNewNs] = useState("");
+  const [creatingNs, setCreatingNs] = useState(false);
+  const nsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function checkServices() {
-      // Check backend health (which implies Qdrant connectivity)
       try {
         await api.checkHealth();
         setStatus((s) => ({ ...s, qdrant: "online" }));
@@ -41,7 +59,6 @@ export function Sidebar() {
         setStatus((s) => ({ ...s, qdrant: "offline" }));
       }
 
-      // Check Ollama
       try {
         const res = await fetch("/api/health");
         if (res.ok) {
@@ -58,6 +75,55 @@ export function Sidebar() {
     const interval = setInterval(checkServices, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Load auth status and namespaces
+  useEffect(() => {
+    api.getAuthStatus().then(setAuthStatus).catch(() => {});
+    api
+      .getNamespaces()
+      .then((data) => {
+        setNamespaces(data.namespaces);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (nsRef.current && !nsRef.current.contains(e.target as Node)) {
+        setNsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const switchNamespace = (ns: string) => {
+    setActiveNs(ns);
+    localStorage.setItem("locallens_namespace", ns);
+    setNsOpen(false);
+    // Force reload data on the current page
+    window.dispatchEvent(new Event("locallens-ns-change"));
+  };
+
+  const createNamespace = async () => {
+    const name = newNs.trim().toLowerCase();
+    if (!name) return;
+    setCreatingNs(true);
+    try {
+      await api.createNamespace(name);
+      setNamespaces((prev) => (prev.includes(name) ? prev : [...prev, name].sort()));
+      switchNamespace(name);
+      setNewNs("");
+    } catch {
+      // Silently ignore
+    } finally {
+      setCreatingNs(false);
+    }
+  };
+
+  const authEnabled = authStatus?.auth_enabled ?? false;
+  const authenticated = authStatus?.authenticated ?? true;
 
   return (
     <aside
@@ -80,6 +146,97 @@ export function Sidebar() {
         </span>
       </div>
 
+      {/* Namespace Selector */}
+      <div className="mx-3 mb-2" ref={nsRef}>
+        <button
+          onClick={() => setNsOpen(!nsOpen)}
+          className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors"
+          style={{
+            background: "var(--bg-card)",
+            borderColor: "var(--border)",
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
+          }}
+        >
+          <span className="flex items-center gap-2">
+            <Database className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
+            <span className="truncate">{activeNs}</span>
+          </span>
+          <ChevronDown
+            className="h-3.5 w-3.5 transition-transform"
+            style={{
+              color: "var(--text-tertiary)",
+              transform: nsOpen ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          />
+        </button>
+        {nsOpen && (
+          <div
+            className="absolute left-3 right-3 z-50 mt-1 rounded-lg border shadow-md"
+            style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+          >
+            <div className="max-h-48 overflow-y-auto py-1">
+              {namespaces.map((ns) => (
+                <button
+                  key={ns}
+                  onClick={() => switchNamespace(ns)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    color: ns === activeNs ? "var(--accent)" : "var(--text-primary)",
+                    background: ns === activeNs ? "var(--accent-soft)" : "transparent",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (ns !== activeNs)
+                      e.currentTarget.style.background = "var(--bg-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background =
+                      ns === activeNs ? "var(--accent-soft)" : "transparent";
+                  }}
+                >
+                  <Database className="h-3 w-3" style={{ color: "var(--text-tertiary)" }} />
+                  {ns}
+                </button>
+              ))}
+            </div>
+            <div
+              className="flex items-center gap-1 border-t px-2 py-2"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <input
+                type="text"
+                placeholder="New namespace..."
+                value={newNs}
+                onChange={(e) => setNewNs(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") createNamespace();
+                }}
+                className="flex-1 rounded border px-2 py-1 text-xs outline-none"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--bg-page)",
+                  color: "var(--text-primary)",
+                  fontFamily: "var(--font-sans)",
+                }}
+              />
+              <button
+                onClick={createNamespace}
+                disabled={creatingNs || !newNs.trim()}
+                className="flex items-center justify-center rounded p-1 transition-colors disabled:opacity-50"
+                style={{ color: "var(--accent)" }}
+              >
+                {creatingNs ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3">
         {navItems.map((item) => (
@@ -95,6 +252,43 @@ export function Sidebar() {
             <span>{item.label}</span>
           </NavLink>
         ))}
+
+        {/* Separator */}
+        <div className="!my-3" style={{ borderTop: "1px solid var(--border)" }} />
+
+        {/* Settings */}
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `sk-nav-item ${isActive ? "active" : ""}`
+          }
+        >
+          <Settings className="h-4 w-4 sk-nav-icon" />
+          <span>Settings</span>
+          {/* Lock icon showing auth state */}
+          <span className="ml-auto">
+            {authEnabled ? (
+              authenticated ? (
+                <Lock className="h-3.5 w-3.5" style={{ color: "#22c55e" }} />
+              ) : (
+                <LockOpen className="h-3.5 w-3.5" style={{ color: "#ef4444" }} />
+              )
+            ) : null}
+          </span>
+        </NavLink>
+
+        {/* Audit Log -- only visible when auth is active */}
+        {authEnabled && (
+          <NavLink
+            to="/audit"
+            className={({ isActive }) =>
+              `sk-nav-item ${isActive ? "active" : ""}`
+            }
+          >
+            <ScrollText className="h-4 w-4 sk-nav-icon" />
+            <span>Audit Log</span>
+          </NavLink>
+        )}
       </nav>
 
       {/* Connection Status */}

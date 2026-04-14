@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """You are a helpful assistant. Answer the question based ONLY on the provided context. If you cannot find the answer in the context, say so. Be concise and accurate."""
 
 
-def get_rag_context(question: str, top_k: int) -> tuple[str, list[AskSource]]:
+def get_rag_context(question: str, top_k: int, collection: str | None = None) -> tuple[str, list[AskSource]]:
     """Retrieve context and sources for RAG."""
-    result = search(question, top_k)
+    result = search(question, top_k, collection=collection)
     if not result.results:
         return "", []
 
@@ -30,10 +30,10 @@ def get_rag_context(question: str, top_k: int) -> tuple[str, list[AskSource]]:
     return "\n\n---\n\n".join(context_parts), sources
 
 
-def stream_answer(question: str, top_k: int = 3):
+def stream_answer(question: str, top_k: int = 3, collection: str | None = None):
     """Generator that yields (token, sources_or_none) tuples.
     Sources are yielded as the last item."""
-    context, sources = get_rag_context(question, top_k)
+    context, sources = get_rag_context(question, top_k, collection=collection)
 
     if not context:
         yield ("I don't have any indexed documents to answer this question. Please index some files first.", None)

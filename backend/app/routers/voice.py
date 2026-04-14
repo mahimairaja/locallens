@@ -1,5 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
 from fastapi.responses import Response
+from app.auth import check_namespace_access, require_auth
+from app.config import collection_for_namespace
 from app.models import TranscribeResponse, SynthesizeRequest
 from app.services import voice_stt, voice_tts
 from app.services.rag import stream_answer
@@ -9,7 +11,7 @@ router = APIRouter()
 
 
 @router.post("/voice/transcribe", response_model=TranscribeResponse)
-async def transcribe(file: UploadFile = File(...)):
+async def transcribe(file: UploadFile = File(...), api_key: str | None = Depends(require_auth)):
     if not voice_stt.is_available():
         raise HTTPException(501, "STT not available. Install: pip install 'locallens[voice]'")
 
@@ -19,7 +21,7 @@ async def transcribe(file: UploadFile = File(...)):
 
 
 @router.post("/voice/synthesize")
-async def synthesize(req: SynthesizeRequest):
+async def synthesize(req: SynthesizeRequest, api_key: str | None = Depends(require_auth)):
     if not voice_tts.is_available():
         raise HTTPException(501, "TTS not available. Install: pip install 'locallens[voice]'")
 
@@ -28,9 +30,16 @@ async def synthesize(req: SynthesizeRequest):
 
 
 @router.post("/voice/conversation")
-async def voice_conversation(file: UploadFile = File(...)):
+async def voice_conversation(
+    file: UploadFile = File(...),
+    namespace: str = Query("default"),
+    api_key: str | None = Depends(require_auth),
+):
     if not voice_stt.is_available():
         raise HTTPException(501, "STT not available. Install: pip install 'locallens[voice]'")
+
+    check_namespace_access(api_key, namespace)
+    collection = collection_for_namespace(namespace)
 
     # Transcribe
     audio_bytes = await file.read()
@@ -47,7 +56,7 @@ async def voice_conversation(file: UploadFile = File(...)):
     # Execute
     response_text = ""
     sources = []
-    for token, srcs in stream_answer(text, top_k=3):
+    for token, srcs in stream_answer(text, top_k=3, collection=collection):
         if token is not None:
             response_text += token
         if srcs is not None:

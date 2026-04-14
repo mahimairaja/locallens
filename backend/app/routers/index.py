@@ -1,5 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from app.auth import check_namespace_access, require_auth
+from app.config import collection_for_namespace
 from app.models import IndexRequest, IndexProgress
+from app.services import audit
 from app.services.indexer import index_folder
 import asyncio
 import uuid
@@ -14,7 +17,14 @@ _subscribers: dict[str, list[WebSocket]] = {}
 
 
 @router.post("/index")
-async def start_index(req: IndexRequest, background_tasks: BackgroundTasks):
+async def start_index(
+    req: IndexRequest,
+    background_tasks: BackgroundTasks,
+    namespace: str = Query("default"),
+    api_key: str | None = Depends(require_auth),
+):
+    check_namespace_access(api_key, namespace)
+    collection = collection_for_namespace(namespace)
     task_id = str(uuid.uuid4())
     _tasks[task_id] = IndexProgress(status="scanning")
     _subscribers[task_id] = []
@@ -25,9 +35,10 @@ async def start_index(req: IndexRequest, background_tasks: BackgroundTasks):
             _notify_subscribers(task_id, p)
 
         try:
-            result = index_folder(req.folder_path, req.force, on_progress)
+            result = index_folder(req.folder_path, req.force, on_progress, collection=collection)
             _tasks[task_id] = result
             _notify_subscribers(task_id, result)
+            audit.log("index", namespace=namespace, api_key=api_key, detail=req.folder_path)
         except Exception as e:
             error_progress = IndexProgress(status="error", error=str(e))
             _tasks[task_id] = error_progress
@@ -88,12 +99,12 @@ async def index_progress_ws(websocket: WebSocket, task_id: str):
 
 
 @router.get("/index/status/{task_id}")
-async def get_index_status(task_id: str):
+async def get_index_status(task_id: str, api_key: str | None = Depends(require_auth)):
     if task_id not in _tasks:
         raise HTTPException(404, "Task not found")
     return _tasks[task_id]
 
 
 @router.get("/index/status")
-async def get_all_status():
+async def get_all_status(api_key: str | None = Depends(require_auth)):
     return _tasks
