@@ -27,7 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 voice = [
     "moonshine-voice>=0.0.50",
-    "kokoro-onnx>=0.5.0",
+    "piper-tts>=1.4.0",
     "sounddevice>=0.5.0",
     "onnxruntime>=1.19.0",
 ]

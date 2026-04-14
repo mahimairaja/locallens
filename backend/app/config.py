@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     kokoro_voice: str = "af_heart"
     sample_rate: int = 16000
 
-    model_config = {"env_file": "../../.env"}
+    model_config = {"env_file": "../.env"}
 
 
 settings = Settings()

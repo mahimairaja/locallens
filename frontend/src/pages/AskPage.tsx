@@ -4,9 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Trash2, Loader2, AlertCircle, Mic, Volume2 } from "lucide-react";
+import { Send, Trash2, Loader2, AlertCircle, Mic, Volume2, Square, VolumeX } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ChatMessage, AskSource } from "@/types";
+
+type TtsState = "idle" | "loading" | "playing";
 
 const SUGGESTED_QUESTIONS = [
   "What are the key points in my latest report?",
@@ -23,7 +25,7 @@ export default function AskPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState<{ stt: boolean; tts: boolean }>({ stt: false, tts: false });
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [ttsStates, setTtsStates] = useState<Record<string, TtsState>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -168,7 +170,7 @@ export default function AskPage() {
     audioRef.current?.pause();
     setMessages([]);
     setError(null);
-    setPlayingId(null);
+    setTtsStates({});
   };
 
   const startRecording = async () => {
@@ -220,33 +222,52 @@ export default function AskPage() {
     }
   };
 
+  const getTtsState = (id: string): TtsState => ttsStates[id] ?? "idle";
+
+  const setTtsState = (id: string, state: TtsState) =>
+    setTtsStates((prev) => ({ ...prev, [id]: state }));
+
   const playMessage = async (msg: ChatMessage) => {
     if (!voiceAvailable.tts || !msg.content.trim()) return;
-    // Toggle off if this message is already playing
-    if (playingId === msg.id) {
+    const state = getTtsState(msg.id);
+
+    // Stop if already playing or loading
+    if (state === "playing" || state === "loading") {
       audioRef.current?.pause();
       audioRef.current = null;
-      setPlayingId(null);
+      setTtsState(msg.id, "idle");
       return;
     }
+
     try {
+      // Stop any other playback first
       audioRef.current?.pause();
+      audioRef.current = null;
+      // Reset all other playing states
+      setTtsStates((prev) => {
+        const next: Record<string, TtsState> = {};
+        for (const k in prev) next[k] = "idle";
+        next[msg.id] = "loading";
+        return next;
+      });
+
       const buf = await api.synthesize(msg.content.slice(0, 1000));
       const url = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
       const audio = new Audio(url);
       audioRef.current = audio;
-      setPlayingId(msg.id);
+      setTtsState(msg.id, "playing");
+
       audio.onended = () => {
-        setPlayingId((cur) => (cur === msg.id ? null : cur));
+        setTtsState(msg.id, "idle");
         URL.revokeObjectURL(url);
       };
       audio.onerror = () => {
-        setPlayingId((cur) => (cur === msg.id ? null : cur));
+        setTtsState(msg.id, "idle");
         URL.revokeObjectURL(url);
       };
       await audio.play();
     } catch {
-      setPlayingId(null);
+      setTtsState(msg.id, "idle");
       setError("Could not play audio response.");
     }
   };
@@ -314,7 +335,7 @@ export default function AskPage() {
                   </div>
                 ) : (
                   <div
-                    className="group relative max-w-[80%] px-4 py-3 text-sm"
+                    className="max-w-[80%] text-sm"
                     style={{
                       background: "var(--bg-card)",
                       color: "var(--text-primary)",
@@ -322,41 +343,85 @@ export default function AskPage() {
                       border: "1px solid var(--border)",
                       borderRadius: "var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px",
                       boxShadow: "var(--shadow-xs)",
+                      overflow: "hidden",
                     }}
                   >
-                    <p className="whitespace-pre-wrap" style={{ lineHeight: 1.55 }}>
-                      {msg.content}
-                    </p>
-                    {isStreaming && msg === messages[messages.length - 1] && !msg.content && (
-                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--accent)" }} />
-                    )}
-                    {msg.sources && msg.sources.length > 0 && (
+                    <div className="px-4 py-3">
+                      <p className="whitespace-pre-wrap" style={{ lineHeight: 1.55 }}>
+                        {msg.content}
+                      </p>
+                      {isStreaming && msg === messages[messages.length - 1] && !msg.content && (
+                        <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--accent)" }} />
+                      )}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div
+                          className="mt-3 flex flex-wrap gap-1.5 pt-2.5"
+                          style={{ borderTop: "1px solid var(--border)" }}
+                        >
+                          {msg.sources.map((src, i) => (
+                            <span key={i} className="sk-source-tag">
+                              {src.file_name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* TTS inline action bar */}
+                    {voiceAvailable.tts && msg.content && !isStreaming && (
                       <div
-                        className="mt-3 flex flex-wrap gap-1.5 pt-2.5"
-                        style={{ borderTop: "1px solid var(--border)" }}
-                      >
-                        {msg.sources.map((src, i) => (
-                          <span key={i} className="sk-source-tag">
-                            {src.file_name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {voiceAvailable.tts && msg.content && (
-                      <button
-                        onClick={() => playMessage(msg)}
-                        title={playingId === msg.id ? "Stop playback" : "Play response"}
-                        aria-label="Play response"
-                        className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full transition-all"
+                        className="flex items-center gap-2 px-4 py-2"
                         style={{
-                          background: playingId === msg.id ? "var(--accent)" : "var(--bg-card)",
-                          color: playingId === msg.id ? "var(--text-on-accent)" : "var(--text-tertiary)",
-                          border: "1px solid var(--border)",
-                          boxShadow: "var(--shadow-xs)",
+                          borderTop: "1px solid var(--border)",
+                          background: getTtsState(msg.id) === "playing"
+                            ? "var(--accent-soft)"
+                            : "transparent",
+                          transition: "background 0.2s ease",
                         }}
                       >
-                        <Volume2 className="h-3.5 w-3.5" strokeWidth={2} />
-                      </button>
+                        <button
+                          onClick={() => playMessage(msg)}
+                          disabled={isStreaming}
+                          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-all"
+                          style={{
+                            color: getTtsState(msg.id) === "idle"
+                              ? "var(--text-tertiary)"
+                              : "var(--accent)",
+                            fontFamily: "var(--font-sans)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {getTtsState(msg.id) === "loading" ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span>Synthesizing...</span>
+                            </>
+                          ) : getTtsState(msg.id) === "playing" ? (
+                            <>
+                              <Square className="h-3 w-3" fill="currentColor" />
+                              <span>Stop</span>
+                              {/* Animated audio bars */}
+                              <span className="ml-1 flex items-end gap-[2px]">
+                                {[1, 2, 3].map((i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-block w-[2px] rounded-full"
+                                    style={{
+                                      background: "var(--accent)",
+                                      animation: `tts-bar 0.8s ease-in-out ${i * 0.15}s infinite alternate`,
+                                    }}
+                                  />
+                                ))}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="h-3.5 w-3.5" />
+                              <span>Listen</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

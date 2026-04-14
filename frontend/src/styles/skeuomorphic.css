@@ -643,6 +643,14 @@ code, pre, .font-mono, .sk-mono {
 }
 
 /* ============================================================
+   TTS audio bars animation
+   ============================================================ */
+@keyframes tts-bar {
+  0%   { height: 4px; }
+  100% { height: 12px; }
+}
+
+/* ============================================================
    Global transitions
    ============================================================ */
 button, a, [data-slot="button"], .sk-nav-item, .sk-card, .sk-postit, [data-slot="card"] {

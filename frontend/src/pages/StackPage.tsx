@@ -57,10 +57,10 @@ const STACK: StackComponent[] = [
     role: "Transcribes voice input on the /ask page",
   },
   {
-    name: "Moonshine TTS (en-us)",
+    name: "Piper TTS (lessac-medium)",
     purpose: "On-device text-to-speech",
-    version: "auto-downloaded",
-    role: "Plays back assistant answers",
+    version: "VITS / ONNX, auto-downloaded",
+    role: "Plays back assistant answers via inline Listen button",
   },
   {
     name: "FastAPI",
@@ -171,10 +171,10 @@ export default function StackPage() {
           style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)", lineHeight: 1.6 }}
         >
           LocalLens is an offline semantic file search built on Qdrant Edge,
-          sentence-transformers, Ollama, and Moonshine. Everything runs on
-          your machine — no servers you don't own, no telemetry. This page
-          walks through what's inside and how you can build with the same
-          pieces.
+          sentence-transformers, Ollama, Moonshine STT, and Piper TTS.
+          Everything runs on your machine — no servers you don't own, no
+          telemetry. This page walks through what's inside and how you can
+          build with the same pieces.
         </p>
       </div>
 
