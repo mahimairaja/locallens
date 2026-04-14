@@ -1,4 +1,4 @@
-.PHONY: setup dev stop
+.PHONY: setup dev stop test
 
 VENV := .venv
 UVICORN := $(VENV)/bin/uvicorn
@@ -18,3 +18,8 @@ dev:
 stop:
 	docker compose down
 	pkill -f uvicorn || true
+
+test:
+	docker compose up -d qdrant
+	pip install -e ".[test]" --quiet
+	pytest tests/ -v --tb=short
