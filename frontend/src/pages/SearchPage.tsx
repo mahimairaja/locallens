@@ -15,6 +15,12 @@ const FILE_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: ".md",   label: ".md"   },
   { value: ".pdf",  label: ".pdf"  },
   { value: ".docx", label: ".docx" },
+  { value: ".pptx", label: ".pptx" },
+  { value: ".xlsx", label: ".xlsx" },
+  { value: ".xls",  label: ".xls"  },
+  { value: ".csv",  label: ".csv"  },
+  { value: ".tsv",  label: ".tsv"  },
+  { value: ".html", label: ".html" },
   { value: ".py",   label: ".py"   },
   { value: ".js",   label: ".js"   },
   { value: ".ts",   label: ".ts"   },
@@ -31,6 +37,9 @@ export default function SearchPage() {
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [topK, setTopK] = useState(10);
   const [fileType, setFileType] = useState<string>("");
+  const [searchMode, setSearchMode] = useState<string>("hybrid");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchTime, setSearchTime] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,7 +52,9 @@ export default function SearchPage() {
       setLoading(true);
       setHasSearched(true);
       try {
-        const resp: SearchResponse = await api.search(q, topK, fileType || null);
+        const resp: SearchResponse = await api.search(
+          q, topK, fileType || null, null, searchMode, dateFrom || null, dateTo || null,
+        );
         setResults(resp.results);
         setSearchTime(resp.search_time_ms);
       } catch {
@@ -52,7 +63,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     },
-    [topK, fileType]
+    [topK, fileType, searchMode, dateFrom, dateTo]
   );
 
   // Auto-search from URL param
@@ -186,6 +197,67 @@ export default function SearchPage() {
               ))}
             </select>
           </label>
+          <label className="flex items-center gap-2">
+            <span style={{ fontWeight: 500 }}>Mode</span>
+            <select
+              value={searchMode}
+              onChange={(e) => setSearchMode(e.target.value)}
+              className="text-sm"
+              style={{
+                background: "var(--bg-card)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.35rem 0.65rem",
+                fontFamily: "var(--font-sans)",
+                cursor: "pointer",
+                outline: "none",
+                boxShadow: "var(--shadow-xs)",
+              }}
+            >
+              <option value="hybrid">Hybrid</option>
+              <option value="semantic">Semantic</option>
+              <option value="keyword">Keyword</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <span style={{ fontWeight: 500 }}>From</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="text-sm"
+              style={{
+                background: "var(--bg-card)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.25rem 0.5rem",
+                fontFamily: "var(--font-sans)",
+                outline: "none",
+                boxShadow: "var(--shadow-xs)",
+              }}
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <span style={{ fontWeight: 500 }}>To</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="text-sm"
+              style={{
+                background: "var(--bg-card)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.25rem 0.5rem",
+                fontFamily: "var(--font-sans)",
+                outline: "none",
+                boxShadow: "var(--shadow-xs)",
+              }}
+            />
+          </label>
           {searchTime !== null && (
             <span className="ml-auto">
               {results.length} results · {searchTime.toFixed(0)}ms
@@ -232,6 +304,26 @@ export default function SearchPage() {
                     {r.file_name}
                   </span>
                   <Badge className={typeTabClass(r.file_type)}>{r.file_type}</Badge>
+                  {r.extractor && (
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[0.65rem]"
+                      style={{
+                        background: "var(--bg-hover)",
+                        color: "var(--text-tertiary)",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      {r.extractor}
+                    </span>
+                  )}
+                  {r.page_number != null && (
+                    <span
+                      className="text-[0.7rem]"
+                      style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
+                    >
+                      p.{r.page_number}
+                    </span>
+                  )}
                   <span className="ml-auto sk-meter">{(r.score * 100).toFixed(1)}%</span>
                 </div>
                 <p
@@ -286,12 +378,17 @@ export default function SearchPage() {
               )}
             </DialogTitle>
           </DialogHeader>
-          <p
-            className="text-xs"
-            style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}
-          >
-            {selectedResult?.file_path}
-          </p>
+          <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>
+            <span>{selectedResult?.file_path}</span>
+            {selectedResult?.extractor && (
+              <span className="rounded px-1.5 py-0.5" style={{ background: "var(--bg-hover)" }}>
+                {selectedResult.extractor}
+              </span>
+            )}
+            {selectedResult?.page_number != null && (
+              <span>p.{selectedResult.page_number}</span>
+            )}
+          </div>
           <div className="sk-brass-rule" />
           <ScrollArea className="max-h-96">
             <pre

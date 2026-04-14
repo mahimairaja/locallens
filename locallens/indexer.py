@@ -20,7 +20,7 @@ from locallens.config import (
 )
 from locallens.embedder import embed_texts
 from locallens.extractors import get_extractor
-from locallens import store
+from locallens import bm25, store
 
 console = Console()
 
@@ -46,6 +46,35 @@ def _point_id(file_path: str, chunk_index: int) -> str:
     return str(uuid.uuid5(UUID_NAMESPACE, f"{file_path}:{chunk_index}"))
 
 
+def _page_for_offset(char_offset: int, page_offsets: list[int]) -> int:
+    """Given a character offset, return the 1-based page number."""
+    page = 1
+    for i, po in enumerate(page_offsets):
+        if char_offset >= po:
+            page = i + 1
+        else:
+            break
+    return page
+
+
+def _assign_page_numbers(
+    text: str, chunks: list[str], page_offsets: list[int] | None,
+) -> list[int | None]:
+    """Map each chunk to its approximate page number."""
+    if not page_offsets:
+        return [None] * len(chunks)
+
+    result = []
+    search_start = 0
+    for chunk in chunks:
+        idx = text.find(chunk[:80], search_start)
+        if idx == -1:
+            idx = search_start
+        result.append(_page_for_offset(idx, page_offsets))
+        search_start = idx
+    return result
+
+
 def index_folder(folder: Path, force: bool = False) -> None:
     """Index all supported files in the given folder into Qdrant Edge.
 
@@ -64,7 +93,7 @@ def index_folder(folder: Path, force: bool = False) -> None:
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
         if file_path.stat().st_size > MAX_FILE_SIZE_MB * 1024 * 1024:
-            console.print(f"[yellow]Skipping (>10MB): {file_path}[/yellow]")
+            console.print(f"[yellow]Skipping (>{MAX_FILE_SIZE_MB}MB): {file_path}[/yellow]")
             continue
         all_files.append(file_path)
 
@@ -101,30 +130,46 @@ def index_folder(folder: Path, force: bool = False) -> None:
                 progress.advance(task)
                 continue
 
-            # O(1) dedup via the file_hash payload index (Phase 2 migration).
+            # O(1) dedup via the file_hash payload index.
             if not force and store.has_hash(fhash):
                 skipped += 1
                 progress.advance(task)
                 continue
 
-            extractor = get_extractor(file_path.suffix.lower())
+            extractor = get_extractor(file_path.suffix.lower(), file_path=file_path)
             if extractor is None:
                 progress.advance(task)
                 continue
 
-            text = extractor.extract(file_path)
+            # Extract text, with page tracking for PDFs
+            page_offsets = None
+            if hasattr(extractor, "extract_with_pages") and file_path.suffix.lower() == ".pdf":
+                text, page_offsets = extractor.extract_with_pages(file_path)
+            else:
+                text = extractor.extract(file_path)
+
             if not text or not text.strip():
                 progress.advance(task)
                 continue
 
-            chunks = chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP)
+            extractor_name = getattr(extractor, "extractor_name", "unknown")
+
+            chunks = chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP, file_type=file_path.suffix.lower())
             if not chunks:
                 progress.advance(task)
                 continue
 
+            page_numbers = _assign_page_numbers(text, chunks, page_offsets)
             embeddings = embed_texts(chunks)
             now = datetime.now(timezone.utc).isoformat()
             abs_path = str(file_path.resolve())
+
+            try:
+                file_mtime = datetime.fromtimestamp(
+                    file_path.stat().st_mtime, tz=timezone.utc
+                ).isoformat()
+            except OSError:
+                file_mtime = None
 
             points = [
                 {
@@ -138,12 +183,19 @@ def index_folder(folder: Path, force: bool = False) -> None:
                         "chunk_text": chunk,
                         "file_hash": fhash,
                         "indexed_at": now,
+                        "extractor": extractor_name,
+                        "page_number": pn,
+                        "file_modified_at": file_mtime,
                     },
                 }
-                for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
+                for i, (chunk, emb, pn) in enumerate(zip(chunks, embeddings, page_numbers))
             ]
 
             store.upsert_batch(points)
+            bm25.add_documents([
+                {"id": _point_id(abs_path, i), "chunk_text": chunk}
+                for i, chunk in enumerate(chunks)
+            ])
             if sync_queue is not None:
                 sync_queue.extend(points)
             indexed_files += 1

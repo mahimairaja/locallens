@@ -16,6 +16,9 @@ class IndexProgress(BaseModel):
     chunks_created: int = 0
     elapsed_seconds: float = 0
     error: Optional[str] = None
+    files_new: int = 0
+    files_updated: int = 0
+    files_skipped: int = 0
 
 
 class SearchRequest(BaseModel):
@@ -23,6 +26,9 @@ class SearchRequest(BaseModel):
     top_k: int = 10
     file_type: Optional[str] = None
     path_prefix: Optional[str] = None
+    mode: str = "hybrid"
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
 
 
 class SearchResult(BaseModel):
@@ -33,6 +39,8 @@ class SearchResult(BaseModel):
     file_type: str
     chunk_text: str
     chunk_index: int
+    extractor: Optional[str] = None
+    page_number: Optional[int] = None
 
 
 class SearchResponse(BaseModel):

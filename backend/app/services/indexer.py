@@ -13,7 +13,7 @@ from qdrant_client.models import PointStruct
 from app.config import settings
 from app.extractors import get_extractor
 from app.models import IndexProgress
-from app.services import embedder, store
+from app.services import bm25, embedder, store
 
 logger = logging.getLogger(__name__)
 
@@ -39,36 +39,39 @@ def _point_id(file_path: str, chunk_index: int) -> str:
     return str(uuid.uuid5(UUID_NAMESPACE, f"{file_path}:{chunk_index}"))
 
 
-def _chunk_text(text: str, size: int, overlap: int) -> list[str]:
-    """Split text into chunks of approximately `size` characters with `overlap`.
+def _chunk_text(text: str, size: int, overlap: int, file_type: str = "") -> list[str]:
+    """Structure-aware chunking. Delegates to the shared chunker module."""
+    from locallens.chunker import chunk_text as _adaptive_chunk
+    return _adaptive_chunk(text, size, overlap, file_type)
 
-    Splits respect word boundaries and strips whitespace from each chunk.
-    Chunks shorter than 50 characters are discarded.
-    """
-    if not text or not text.strip():
-        return []
 
-    chunks: list[str] = []
-    start = 0
-    text_len = len(text)
+def _page_for_offset(char_offset: int, page_offsets: list[int]) -> int:
+    """Given a character offset, return the 1-based page number."""
+    page = 1
+    for i, po in enumerate(page_offsets):
+        if char_offset >= po:
+            page = i + 1
+        else:
+            break
+    return page
 
-    while start < text_len:
-        end = start + size
 
-        if end < text_len:
-            # Walk back to the nearest space to avoid splitting mid-word
-            boundary = text.rfind(" ", start, end)
-            if boundary > start:
-                end = boundary
+def _assign_page_numbers(
+    text: str, chunks: list[str], page_offsets: list[int] | None,
+) -> list[int | None]:
+    """Map each chunk to its approximate page number."""
+    if not page_offsets:
+        return [None] * len(chunks)
 
-        chunk = text[start:end].strip()
-        if len(chunk) >= 50:
-            chunks.append(chunk)
-
-        # Advance by (end - overlap), but at least 1 character to avoid infinite loop
-        start = max(start + 1, end - overlap)
-
-    return chunks
+    result = []
+    search_start = 0
+    for chunk in chunks:
+        idx = text.find(chunk[:80], search_start)
+        if idx == -1:
+            idx = search_start
+        result.append(_page_for_offset(idx, page_offsets))
+        search_start = idx
+    return result
 
 
 def _get_supported_extensions() -> set[str]:
@@ -80,6 +83,7 @@ def index_folder(
     folder_path: str,
     force: bool = False,
     progress_callback: Optional[Callable[[IndexProgress], None]] = None,
+    collection: str | None = None,
 ) -> IndexProgress:
     """Index all supported files in the given folder into Qdrant.
 
@@ -101,12 +105,12 @@ def index_folder(
             progress_callback(error_progress)
         return error_progress
 
-    store.ensure_collection()
+    store.ensure_collection(collection)
     supported = _get_supported_extensions()
     max_bytes = settings.max_file_size_mb * 1024 * 1024
 
     # Gather existing hashes for dedup
-    existing_hashes: set[str] = set() if force else store.get_all_hashes()
+    existing_hashes: set[str] = set() if force else store.get_all_hashes(collection=collection)
 
     # Scan for supported files
     progress = IndexProgress(status="scanning")
@@ -129,6 +133,9 @@ def index_folder(
     start = time.time()
     files_processed = 0
     chunks_created = 0
+    files_new = 0
+    files_updated = 0
+    files_skipped = 0
 
     progress = IndexProgress(
         status="indexing",
@@ -147,6 +154,7 @@ def index_folder(
 
         if not force and fhash in existing_hashes:
             files_processed += 1
+            files_skipped += 1
             progress = IndexProgress(
                 status="indexing",
                 current_file=file_path.name,
@@ -154,35 +162,53 @@ def index_folder(
                 files_total=len(all_files),
                 chunks_created=chunks_created,
                 elapsed_seconds=round(time.time() - start, 1),
+                files_new=files_new,
+                files_updated=files_updated,
+                files_skipped=files_skipped,
             )
             if progress_callback:
                 progress_callback(progress)
             continue
 
-        extractor = get_extractor(file_path.suffix.lower())
+        extractor = get_extractor(file_path.suffix.lower(), file_path=file_path)
         if extractor is None:
             files_processed += 1
             continue
 
-        text = extractor.extract(file_path)
+        # Extract text, with page tracking for PDFs
+        page_offsets = None
+        if hasattr(extractor, "extract_with_pages") and file_path.suffix.lower() == ".pdf":
+            text, page_offsets = extractor.extract_with_pages(file_path)
+        else:
+            text = extractor.extract(file_path)
+
         if not text or not text.strip():
             files_processed += 1
             continue
 
-        chunks = _chunk_text(text, settings.chunk_size, settings.chunk_overlap)
+        extractor_name = getattr(extractor, "extractor_name", "unknown")
+
+        chunks = _chunk_text(text, settings.chunk_size, settings.chunk_overlap, file_type=file_path.suffix.lower())
         if not chunks:
             files_processed += 1
             continue
 
+        page_numbers = _assign_page_numbers(text, chunks, page_offsets)
         embeddings = embedder.encode(chunks)
         now = datetime.now(timezone.utc).isoformat()
         abs_path = str(file_path.resolve())
 
+        # File modification time for date-range filtering
+        try:
+            file_mtime = datetime.fromtimestamp(
+                file_path.stat().st_mtime, tz=timezone.utc
+            ).isoformat()
+        except OSError:
+            file_mtime = None
+
         points = [
             PointStruct(
                 id=_point_id(abs_path, i),
-                # Named vector — must match ``settings.vector_name`` so the
-                # backend and the CLI's Qdrant Edge shard share a schema.
                 vector={settings.vector_name: emb},
                 payload={
                     "file_path": abs_path,
@@ -192,13 +218,24 @@ def index_folder(
                     "chunk_text": chunk,
                     "file_hash": fhash,
                     "indexed_at": now,
+                    "extractor": extractor_name,
+                    "page_number": pn,
+                    "file_modified_at": file_mtime,
                 },
             )
-            for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
+            for i, (chunk, emb, pn) in enumerate(zip(chunks, embeddings, page_numbers))
         ]
 
-        store.upsert_chunks(points)
+        store.upsert_chunks(points, collection=collection)
+        bm25.add_documents([
+            {"id": _point_id(abs_path, i), "chunk_text": chunk}
+            for i, chunk in enumerate(chunks)
+        ])
         chunks_created += len(chunks)
+        if fhash in existing_hashes:
+            files_updated += 1
+        else:
+            files_new += 1
         existing_hashes.add(fhash)
         files_processed += 1
 
@@ -209,6 +246,9 @@ def index_folder(
             files_total=len(all_files),
             chunks_created=chunks_created,
             elapsed_seconds=round(time.time() - start, 1),
+            files_new=files_new,
+            files_updated=files_updated,
+            files_skipped=files_skipped,
         )
         if progress_callback:
             progress_callback(progress)
@@ -220,6 +260,9 @@ def index_folder(
         files_total=len(all_files),
         chunks_created=chunks_created,
         elapsed_seconds=elapsed,
+        files_new=files_new,
+        files_updated=files_updated,
+        files_skipped=files_skipped,
     )
     if progress_callback:
         progress_callback(final_progress)

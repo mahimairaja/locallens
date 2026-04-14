@@ -30,6 +30,8 @@ export interface SearchResult {
   file_type: string;
   chunk_text: string;
   chunk_index: number;
+  extractor?: string | null;
+  page_number?: number | null;
 }
 
 export interface SearchResponse {
