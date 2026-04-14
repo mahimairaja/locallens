@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="300" alt="LocalLens Logo">
+  <img src="assets/logo.svg" width="800" alt="LocalLens Logo">
 </p>
 
 **Search your files by talking to them - 100% offline**
