@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 class TextExtractor:
     """Extract plain text from .txt and .md files."""
 
+    extractor_name = "text"
+
     def extract(self, file_path: Path) -> str:
         """Read file as UTF-8, falling back to latin-1."""
         try:

@@ -4,11 +4,19 @@ from pathlib import Path
 
 from rich.console import Console
 
+from locallens.extractors.base import LocalLensExtractor
+
 console = Console()
 
 
-class CodeExtractor:
+class CodeExtractor(LocalLensExtractor):
     """Extract source code as plain text, prepending the filename."""
+
+    def supported_extensions(self) -> list[str]:
+        return [".py", ".js", ".ts", ".go", ".rs", ".java", ".c", ".cpp", ".rb"]
+
+    def name(self) -> str:
+        return "code"
 
     def extract(self, file_path: Path) -> str:
         """Read source code file as text, prepending a header comment."""

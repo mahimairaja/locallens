@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 class CodeExtractor:
     """Extract source code as plain text, prepending the filename."""
 
+    extractor_name = "code"
+
     def extract(self, file_path: Path) -> str:
         """Read source code file as text, prepending a header comment."""
         try:

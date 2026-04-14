@@ -4,11 +4,19 @@ from pathlib import Path
 
 from rich.console import Console
 
+from locallens.extractors.base import LocalLensExtractor
+
 console = Console()
 
 
-class TextExtractor:
+class TextExtractor(LocalLensExtractor):
     """Extract plain text from .txt and .md files."""
+
+    def supported_extensions(self) -> list[str]:
+        return [".txt", ".md"]
+
+    def name(self) -> str:
+        return "text"
 
     def extract(self, file_path: Path) -> str:
         """Read file as UTF-8, falling back to latin-1."""

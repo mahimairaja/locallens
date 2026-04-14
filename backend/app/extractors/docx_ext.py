@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 class DocxExtractor:
     """Extract text from .docx files using python-docx."""
 
+    extractor_name = "python-docx"
+
     def extract(self, file_path: Path) -> str:
         """Concatenate all paragraph text from the document."""
         try:

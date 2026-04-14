@@ -4,11 +4,19 @@ from pathlib import Path
 
 from rich.console import Console
 
+from locallens.extractors.base import LocalLensExtractor
+
 console = Console()
 
 
-class DocxExtractor:
+class DocxExtractor(LocalLensExtractor):
     """Extract text from .docx files using python-docx."""
+
+    def supported_extensions(self) -> list[str]:
+        return [".docx"]
+
+    def name(self) -> str:
+        return "python-docx"
 
     def extract(self, file_path: Path) -> str:
         """Concatenate all paragraph text from the document."""
