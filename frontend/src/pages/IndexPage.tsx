@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FolderSync, Trash2, Loader2, FolderOpen } from "lucide-react";
+import { FolderSync, Trash2, Loader2, FolderOpen, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
 import type { IndexProgress, IndexedFile } from "@/types";
 import { motion } from "framer-motion";
@@ -24,6 +24,7 @@ export default function IndexPage() {
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [files, setFiles] = useState<IndexedFile[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
+  const [watchStatus, setWatchStatus] = useState<{ running: boolean; folders: string[] }>({ running: false, folders: [] });
   const wsRef = useRef<WebSocket | null>(null);
 
   const loadFiles = () => {
@@ -34,8 +35,27 @@ export default function IndexPage() {
       .finally(() => setFilesLoading(false));
   };
 
+  const loadWatchStatus = () => {
+    fetch("/api/watcher/status")
+      .then((r) => r.json())
+      .then(setWatchStatus)
+      .catch(() => {});
+  };
+
+  const toggleWatch = async (folder: string) => {
+    const isWatched = watchStatus.folders.includes(folder);
+    const endpoint = isWatched ? "/api/watcher/unwatch" : "/api/watcher/watch";
+    await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
+    loadWatchStatus();
+  };
+
   useEffect(() => {
     loadFiles();
+    loadWatchStatus();
   }, []);
 
   const startIndexing = async () => {
@@ -181,6 +201,24 @@ export default function IndexPage() {
             />
             Force re-index (ignore cache)
           </label>
+          {folderPath && (
+            <button
+              type="button"
+              onClick={() => toggleWatch(folderPath)}
+              className="flex items-center gap-1.5 text-sm"
+              style={{
+                color: watchStatus.folders.includes(folderPath) ? "var(--accent)" : "var(--text-tertiary)",
+                fontFamily: "var(--font-sans)",
+                fontWeight: 500,
+              }}
+            >
+              {watchStatus.folders.includes(folderPath) ? (
+                <><Eye className="h-3.5 w-3.5" /> Watching for changes</>
+              ) : (
+                <><EyeOff className="h-3.5 w-3.5" /> Enable auto-watch</>
+              )}
+            </button>
+          )}
         </CardContent>
       </Card>
 

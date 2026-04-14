@@ -11,3 +11,5 @@ pymupdf>=1.24.0
 python-docx>=1.1.0
 numpy>=1.26.0
 websockets>=13.0
+watchdog>=4.0.0
+rank-bm25>=0.2.2

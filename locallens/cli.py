@@ -7,11 +7,11 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from locallens.config import DEFAULT_TOP_K, QDRANT_PATH, RAG_TOP_K
+from locallens.config import DEFAULT_TOP_K, QDRANT_PATH, RAG_TOP_K, COLLECTION_NAME
 
 app = typer.Typer(
     name="locallens",
-    help="Search your files by talking to them — 100% offline semantic search with voice.",
+    help="Search your files by talking to them -- 100% offline semantic search with voice.",
     no_args_is_help=True,
 )
 console = Console()
@@ -22,6 +22,16 @@ sync_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(sync_app)
+
+
+def _collection_for_namespace(namespace: str) -> str:
+    """Return the Qdrant collection name for a given namespace.
+
+    The default namespace maps to the original ``locallens`` collection.
+    """
+    if namespace == "default":
+        return COLLECTION_NAME
+    return f"locallens_{namespace}"
 
 
 @sync_app.command("pull")
@@ -48,13 +58,10 @@ def sync_pull(
 
 
 @sync_app.command("push")
-def sync_push() -> None:
-    """Push every locally indexed point to the remote Qdrant server.
-
-    Useful if indexing was run without ``QDRANT_SYNC_URL`` set and you now
-    want the server to catch up. Scrolls the local shard and uploads in
-    batches of 100.
-    """
+def sync_push(
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to operate on."),
+) -> None:
+    """Push every locally indexed point to the remote Qdrant server."""
     from qdrant_edge import ScrollRequest
 
     from locallens import store as st
@@ -89,6 +96,7 @@ def sync_push() -> None:
 def index(
     folder_path: Path = typer.Argument(..., help="Path to the folder to index."),
     force: bool = typer.Option(False, "--force", help="Re-index all files, ignoring hash cache."),
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to index into."),
 ) -> None:
     """Index local files into the vector database for semantic search."""
     if not folder_path.is_dir():
@@ -110,6 +118,7 @@ def search(
     path_prefix: Optional[str] = typer.Option(
         None, "--path-prefix", help="Only return results whose file_path matches exactly."
     ),
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to search."),
 ) -> None:
     """Semantic search over your indexed files."""
     from locallens import store as st
@@ -152,6 +161,7 @@ def search(
 def ask(
     question: str = typer.Argument(..., help="The question to ask about your files."),
     top_k: int = typer.Option(RAG_TOP_K, "--top-k", help="Number of chunks to retrieve for context."),
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to query."),
 ) -> None:
     """Ask a question about your indexed files using RAG."""
     from locallens import store as st
@@ -179,8 +189,10 @@ def ask(
 
 
 @app.command()
-def voice() -> None:
-    """Start the voice interface — speak to search your files."""
+def voice(
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to use."),
+) -> None:
+    """Start the voice interface -- speak to search your files."""
     try:
         from locallens.voice import start_voice_loop
     except ImportError:
@@ -198,7 +210,88 @@ def voice() -> None:
 
 
 @app.command()
-def stats() -> None:
+def watch(
+    folder_path: Path = typer.Argument(..., help="Path to the folder to watch."),
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to use."),
+) -> None:
+    """Watch a folder for changes and re-index incrementally."""
+    try:
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler, FileSystemEvent
+    except ImportError:
+        console.print(
+            "[red]watchdog not installed.[/red]\n"
+            "Install it with: [bold]pip install locallens\\[watch][/bold]"
+        )
+        raise typer.Exit(code=1)
+
+    if not folder_path.is_dir():
+        console.print(f"[red]Error: '{folder_path}' is not a valid directory.[/red]")
+        raise typer.Exit(code=1)
+
+    from locallens import store as st
+    from locallens.config import SUPPORTED_EXTENSIONS
+
+    st.init()
+
+    class _CliWatchHandler(FileSystemEventHandler):
+        def __init__(self):
+            self.events = 0
+
+        def on_created(self, event: FileSystemEvent):
+            if event.is_directory:
+                return
+            self._handle(event.src_path, "created")
+
+        def on_modified(self, event: FileSystemEvent):
+            if event.is_directory:
+                return
+            self._handle(event.src_path, "modified")
+
+        def on_deleted(self, event: FileSystemEvent):
+            if event.is_directory:
+                return
+            abs_path = str(Path(event.src_path).resolve())
+            st.delete_by_file(abs_path)
+            self.events += 1
+            console.print(f"[red]Removed:[/red] {Path(event.src_path).name}")
+
+        def _handle(self, file_path: str, event_type: str):
+            path = Path(file_path)
+            if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                return
+            if any(part.startswith(".") for part in path.parts):
+                return
+            if not path.is_file():
+                return
+            self.events += 1
+            console.print(f"[cyan]{event_type}:[/cyan] {path.name} -- re-indexing...")
+            try:
+                from locallens.indexer import index_folder
+                index_folder(path.parent, force=False)
+            except Exception as exc:
+                console.print(f"[yellow]Warning: reindex failed: {exc}[/yellow]")
+
+    handler = _CliWatchHandler()
+    observer = Observer()
+    observer.schedule(handler, str(folder_path), recursive=True)
+    observer.start()
+    console.print(f"[green]Watching {folder_path} for changes. Press Ctrl+C to stop.[/green]")
+
+    try:
+        while True:
+            import time
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+        console.print(f"\n[green]Stopped watching. {handler.events} events processed.[/green]")
+    observer.join()
+
+
+@app.command()
+def stats(
+    namespace: str = typer.Option("default", "--namespace", help="Namespace to show stats for."),
+) -> None:
     """Show statistics about the indexed collection."""
     from locallens import store as st
 
@@ -206,7 +299,7 @@ def stats() -> None:
     total_chunks = st.count()
     total_files = st.get_file_count()
 
-    table = Table(title="LocalLens Stats")
+    table = Table(title=f"LocalLens Stats (namespace: {namespace})")
     table.add_column("Metric", style="bold")
     table.add_column("Value")
 
