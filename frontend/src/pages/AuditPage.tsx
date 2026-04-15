@@ -68,18 +68,6 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <h2
-        className="text-2xl"
-        style={{
-          fontFamily: "var(--font-sans)",
-          fontWeight: 600,
-          color: "var(--text-primary)",
-          letterSpacing: "-0.015em",
-        }}
-      >
-        Audit Log
-      </h2>
-
       {error && (
         <Card>
           <CardContent className="p-6">

@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderSync,
@@ -33,7 +33,6 @@ interface ServiceStatus {
 }
 
 export function Sidebar() {
-  const navigate = useNavigate();
   const [status, setStatus] = useState<ServiceStatus>({
     qdrant: "checking",
     ollama: "checking",
@@ -133,11 +132,18 @@ export function Sidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col border-r"
-      style={{ background: "var(--bg-sidebar)", borderColor: "var(--border)" }}
+      className="fixed left-0 top-0 z-40 flex h-screen flex-col border-r"
+      style={{
+        width: "240px",
+        background: "var(--bg-sidebar)",
+        borderColor: "var(--border)",
+      }}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 px-5">
+      <div
+        className="flex h-16 items-center gap-3 px-5"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         <Search className="h-5 w-5" style={{ color: "var(--accent)" }} strokeWidth={2.2} />
         <span
           className="text-lg"
@@ -153,7 +159,7 @@ export function Sidebar() {
       </div>
 
       {/* Namespace Selector */}
-      <div className="mx-3 mb-2" ref={nsRef}>
+      <div className="mx-3 mt-3 mb-2" ref={nsRef}>
         <button
           onClick={() => setNsOpen(!nsOpen)}
           className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors"
@@ -243,6 +249,9 @@ export function Sidebar() {
         )}
       </div>
 
+      {/* Section divider */}
+      <div className="mx-3 my-2" style={{ borderTop: "1px solid var(--border)" }} />
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3">
         {navItems.map((item) => (
@@ -299,27 +308,40 @@ export function Sidebar() {
 
       {/* Connection Status */}
       <div
-        className="mx-3 mb-3 rounded-lg border px-4 py-3 space-y-2"
+        className="mx-3 mb-3 rounded-lg border px-4 py-3 space-y-2.5"
         style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
       >
         <StatusIndicator
           icon={Database}
           label="Qdrant"
           status={status.qdrant}
-          tooltip={status.qdrant === "online" ? "Qdrant vector store is reachable" : status.qdrant === "offline" ? "Qdrant vector store is unreachable" : "Checking Qdrant connection..."}
+          tooltip="Qdrant: Vector search engine"
         />
         <StatusIndicator
           icon={Cpu}
           label="Ollama"
           status={status.ollama}
-          tooltip={status.ollama === "online" ? "Ollama LLM is running" : status.ollama === "offline" ? "Ollama LLM is not running — Ask will be unavailable" : "Checking Ollama connection..."}
+          degraded={status.overall === "degraded"}
+          tooltip="Ollama: Local LLM for Q&A"
         />
         <div
-          className="flex items-center gap-2 pt-1.5 mt-1"
+          className="flex items-center gap-2 pt-2 mt-1"
           style={{ borderTop: "1px solid var(--border)" }}
         >
           <span
-            className="text-[0.68rem]"
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{
+              background: status.overall === "connected"
+                ? "#22c55e"
+                : status.overall === "degraded"
+                  ? "#f59e0b"
+                  : status.overall === "offline"
+                    ? "#ef4444"
+                    : "var(--text-tertiary)",
+            }}
+          />
+          <span
+            className="text-[0.72rem]"
             style={{
               fontFamily: "var(--font-sans)",
               color: status.overall === "connected"
@@ -341,18 +363,6 @@ export function Sidebar() {
                     : "Checking services..."
             }
           >
-            <span
-              className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
-              style={{
-                background: status.overall === "connected"
-                  ? "#22c55e"
-                  : status.overall === "degraded"
-                    ? "#f59e0b"
-                    : status.overall === "offline"
-                      ? "#ef4444"
-                      : "var(--text-tertiary)",
-              }}
-            />
             {status.overall === "connected"
               ? "Connected"
               : status.overall === "degraded"
@@ -381,25 +391,64 @@ function StatusIndicator({
   icon: Icon,
   label,
   status,
+  degraded,
   tooltip,
 }: {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   status: "checking" | "online" | "offline";
+  degraded?: boolean;
   tooltip?: string;
 }) {
+  const statusColor =
+    status === "online"
+      ? degraded
+        ? "#f59e0b"
+        : "#22c55e"
+      : status === "offline"
+        ? "#ef4444"
+        : "var(--text-tertiary)";
+
+  const statusLabel =
+    status === "online"
+      ? degraded
+        ? "Degraded"
+        : "Connected"
+      : status === "offline"
+        ? "Offline"
+        : "Checking...";
+
   return (
     <div className="flex items-center gap-2 text-xs" title={tooltip}>
       <Icon className="h-3.5 w-3.5" style={{ color: "var(--text-tertiary)" }} />
-      <span style={{ fontFamily: "var(--font-sans)", color: "var(--text-tertiary)", fontSize: "0.72rem" }}>
+      <span style={{ fontFamily: "var(--font-sans)", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 500 }}>
         {label}
       </span>
-      <span className="ml-auto">
-        {status === "checking" && (
+      <span className="ml-auto flex items-center gap-1.5">
+        {status === "checking" ? (
           <Loader2 className="h-3 w-3 animate-spin" style={{ color: "var(--text-tertiary)" }} />
+        ) : (
+          <>
+            <span
+              className="inline-block rounded-full"
+              style={{
+                width: "10px",
+                height: "10px",
+                background: statusColor,
+              }}
+            />
+            <span
+              style={{
+                fontSize: "0.68rem",
+                fontFamily: "var(--font-sans)",
+                fontWeight: 500,
+                color: statusColor,
+              }}
+            >
+              {statusLabel}
+            </span>
+          </>
         )}
-        {status === "online" && <span className="sk-led sk-led-green" />}
-        {status === "offline" && <span className="sk-led sk-led-red" />}
       </span>
     </div>
   );

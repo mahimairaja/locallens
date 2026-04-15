@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Trash2, Loader2, AlertCircle, Mic, Volume2, Square, VolumeX, AlertTriangle } from "lucide-react";
+import { Send, Trash2, Loader2, AlertCircle, Mic, Volume2, Square, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ChatMessage, AskSource } from "@/types";
 
@@ -27,6 +26,7 @@ export default function AskPage() {
   const [voiceAvailable, setVoiceAvailable] = useState<{ stt: boolean; tts: boolean }>({ stt: false, tts: false });
   const [ollamaOffline, setOllamaOffline] = useState(false);
   const [ttsStates, setTtsStates] = useState<Record<string, TtsState>>({});
+  const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -67,6 +67,10 @@ export default function AskPage() {
     const interval = setInterval(checkOllama, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const toggleSources = (msgId: string) => {
+    setExpandedSources((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
+  };
 
   const askQuestion = async (question: string) => {
     if (!question.trim() || isStreaming) return;
@@ -187,6 +191,7 @@ export default function AskPage() {
     setMessages([]);
     setError(null);
     setTtsStates({});
+    setExpandedSources({});
   };
 
   const startRecording = async () => {
@@ -288,12 +293,14 @@ export default function AskPage() {
     }
   };
 
+  const inputEmpty = !input.trim();
+
   return (
     <div className="mx-auto flex h-[calc(100vh-7rem)] max-w-3xl flex-col">
       {/* Header with Clear */}
       <div className="mb-3 flex items-center justify-end">
         {messages.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearChat}>
+          <Button variant="ghost" size="sm" onClick={clearChat} className="sk-press">
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             Clear Chat
           </Button>
@@ -321,62 +328,95 @@ export default function AskPage() {
       {/* Chat area */}
       <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center space-y-8 py-16">
-            <p
-              className="text-lg"
-              style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
-            >
-              Ask a question about your indexed files
-            </p>
+          /* ── Step 15: Empty state ── */
+          <div className="flex h-full flex-col items-center justify-center space-y-6 py-16">
+            {/* Mic icon hint with pulse */}
+            {voiceAvailable.stt && (
+              <div
+                className="sk-mic-hint-pulse flex h-14 w-14 items-center justify-center rounded-full"
+                style={{ background: "var(--accent-soft)" }}
+              >
+                <Mic className="h-6 w-6" style={{ color: "var(--accent)" }} />
+              </div>
+            )}
+            <div className="space-y-1 text-center">
+              <p
+                className="text-lg"
+                style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontWeight: 600 }}
+              >
+                Ask a question about your files
+              </p>
+              <p
+                className="text-sm"
+                style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
+              >
+                Try asking...
+              </p>
+            </div>
             <div className="grid w-full grid-cols-1 gap-3 px-2 sm:grid-cols-2">
               {SUGGESTED_QUESTIONS.map((q) => (
-                <div
+                <button
                   key={q}
-                  className="sk-postit"
+                  type="button"
+                  className="sk-press rounded-xl px-4 py-3 text-left text-sm"
                   onClick={() => askQuestion(q)}
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    color: "var(--text-primary)",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "12px",
+                    boxShadow: "var(--shadow-xs)",
+                    transition: "border-color 150ms ease, box-shadow 150ms ease, background 150ms ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--accent)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                    e.currentTarget.style.background = "rgba(198,123,60,0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-xs)";
+                    e.currentTarget.style.background = "var(--bg-card)";
+                  }}
                 >
-                  <span
-                    style={{
-                      fontFamily: "var(--font-sans)",
-                      fontSize: "0.9rem",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {q}
-                  </span>
-                </div>
+                  {q}
+                </button>
               ))}
             </div>
           </div>
         ) : (
+          /* ── Step 16: Chat messages ── */
           <div className="space-y-4 pb-4">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`sk-msg-enter flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "user" ? (
+                  /* User bubble: copper bg, white text, sharp bottom-right */
                   <div
                     className="max-w-[80%] px-4 py-3 text-sm"
                     style={{
-                      background: "var(--accent-soft)",
-                      color: "var(--text-primary)",
+                      background: "#C67B3C",
+                      color: "#FFFFFF",
                       fontFamily: "var(--font-sans)",
-                      borderRadius: "var(--radius-lg) var(--radius-lg) 4px var(--radius-lg)",
+                      borderRadius: "16px 16px 4px 16px",
                     }}
                   >
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 ) : (
+                  /* Assistant bubble: white bg, shadow, sharp bottom-left */
                   <div
                     className="max-w-[80%] text-sm"
                     style={{
-                      background: "var(--bg-card)",
+                      background: "#FFFFFF",
                       color: "var(--text-primary)",
                       fontFamily: "var(--font-sans)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px",
-                      boxShadow: "var(--shadow-xs)",
+                      borderRadius: "16px 16px 16px 4px",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
                       overflow: "hidden",
                     }}
                   >
@@ -387,16 +427,72 @@ export default function AskPage() {
                       {isStreaming && msg === messages[messages.length - 1] && !msg.content && (
                         <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--accent)" }} />
                       )}
+
+                      {/* Collapsible sources */}
                       {msg.sources && msg.sources.length > 0 && (
                         <div
-                          className="mt-3 flex flex-wrap gap-1.5 pt-2.5"
+                          className="mt-3 pt-2.5"
                           style={{ borderTop: "1px solid var(--border)" }}
                         >
-                          {msg.sources.map((src, i) => (
-                            <span key={i} className="sk-source-tag">
-                              {src.file_name}
-                            </span>
-                          ))}
+                          <button
+                            type="button"
+                            className="sk-press flex items-center gap-1.5 text-xs"
+                            style={{
+                              color: "var(--accent)",
+                              fontFamily: "var(--font-sans)",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              background: "none",
+                              border: "none",
+                              padding: 0,
+                            }}
+                            onClick={() => toggleSources(msg.id)}
+                          >
+                            {expandedSources[msg.id] ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )}
+                            {msg.sources.length} source{msg.sources.length !== 1 ? "s" : ""}
+                          </button>
+                          {expandedSources[msg.id] && (
+                            <div className="mt-2 space-y-1.5">
+                              {msg.sources.map((src, i) => (
+                                <div
+                                  key={i}
+                                  className="rounded-lg px-3 py-2"
+                                  style={{
+                                    background: "var(--bg-page)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "8px",
+                                  }}
+                                >
+                                  <p
+                                    className="text-xs"
+                                    style={{
+                                      fontWeight: 600,
+                                      color: "var(--text-primary)",
+                                      fontFamily: "var(--font-sans)",
+                                    }}
+                                  >
+                                    {src.file_name}
+                                  </p>
+                                  {src.chunk_preview && (
+                                    <p
+                                      className="mt-1 line-clamp-2 text-xs"
+                                      style={{
+                                        color: "var(--text-tertiary)",
+                                        fontFamily: "var(--font-sans)",
+                                        lineHeight: 1.45,
+                                      }}
+                                    >
+                                      {src.chunk_preview}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -416,7 +512,7 @@ export default function AskPage() {
                         <button
                           onClick={() => playMessage(msg)}
                           disabled={isStreaming}
-                          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-all"
+                          className="sk-press flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-all"
                           style={{
                             color: getTtsState(msg.id) === "idle"
                               ? "var(--text-tertiary)"
@@ -461,6 +557,25 @@ export default function AskPage() {
                 )}
               </div>
             ))}
+
+            {/* Skeleton bubble while streaming and assistant content is empty */}
+            {isStreaming && messages.length > 0 && messages[messages.length - 1].role === "assistant" && !messages[messages.length - 1].content && (
+              <div className="flex justify-start">
+                <div
+                  className="max-w-[80%] px-4 py-3"
+                  style={{
+                    background: "#FFFFFF",
+                    borderRadius: "16px 16px 16px 4px",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <div className="space-y-2">
+                    <div className="sk-skeleton h-3" style={{ width: "200px" }} />
+                    <div className="sk-skeleton h-3" style={{ width: "150px" }} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>
@@ -490,13 +605,20 @@ export default function AskPage() {
         </div>
       )}
 
-      {/* Input */}
+      {/* ── Step 17: Sticky input area ── */}
       <div
-        className="mt-4 flex items-center gap-2 pt-4"
-        style={{ borderTop: "1px solid var(--border)" }}
+        className="mt-auto flex items-center gap-2 pt-4 pb-1"
+        style={{
+          position: "sticky",
+          bottom: 0,
+          background: "var(--bg-page)",
+          boxShadow: "0 -4px 12px rgba(0,0,0,0.04)",
+          borderRadius: "0",
+          zIndex: 10,
+        }}
       >
         <Input
-          placeholder={isRecording ? "Listening…" : isTranscribing ? "Transcribing…" : "Ask a question..."}
+          placeholder={isRecording ? "Listening..." : isTranscribing ? "Transcribing..." : "Ask a question..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -507,6 +629,7 @@ export default function AskPage() {
           }}
           disabled={isStreaming || isRecording || isTranscribing}
           className="flex-1"
+          style={{ borderRadius: "8px" }}
         />
         {voiceAvailable.stt && (
           <button
@@ -515,12 +638,13 @@ export default function AskPage() {
             disabled={isStreaming || isTranscribing}
             title={isRecording ? "Stop recording" : "Record a question"}
             aria-label="Record voice question"
-            className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] transition-all disabled:opacity-50"
+            className={`sk-press flex h-9 w-9 items-center justify-center rounded-lg transition-all disabled:opacity-50 ${isRecording ? "sk-recording-pulse" : ""}`}
             style={{
-              background: isRecording ? "var(--accent)" : "var(--bg-card)",
-              color: isRecording ? "var(--text-on-accent)" : "var(--text-secondary)",
-              border: `1px solid ${isRecording ? "var(--accent)" : "var(--border)"}`,
+              background: isRecording ? "#C67B3C" : "var(--bg-card)",
+              color: isRecording ? "#FFFFFF" : "#C67B3C",
+              border: `1px solid ${isRecording ? "#C67B3C" : "var(--border)"}`,
               boxShadow: "var(--shadow-xs)",
+              borderRadius: "8px",
             }}
           >
             {isTranscribing ? (
@@ -532,16 +656,25 @@ export default function AskPage() {
         )}
         <Button
           onClick={() => askQuestion(input)}
-          disabled={isStreaming || isRecording || isTranscribing || !input.trim()}
+          disabled={isStreaming || isRecording || isTranscribing || inputEmpty}
+          className="sk-press"
+          style={{
+            background: inputEmpty ? "var(--bg-hover)" : "#C67B3C",
+            color: inputEmpty ? "var(--text-tertiary)" : "#FFFFFF",
+            border: "none",
+            borderRadius: "8px",
+            opacity: inputEmpty ? 0.6 : 1,
+            cursor: inputEmpty ? "not-allowed" : "pointer",
+          }}
         >
           <Send className="h-4 w-4" />
         </Button>
       </div>
       <p
-        className="mt-1 text-right text-[0.7rem]"
+        className="mt-1 pb-2 text-right text-[0.7rem]"
         style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
       >
-        {voiceAvailable.stt ? "Press Enter to send · tap the mic to speak" : "Press Enter to send"}
+        {voiceAvailable.stt ? "Press Enter to send, tap the mic to speak" : "Press Enter to send"}
       </p>
     </div>
   );

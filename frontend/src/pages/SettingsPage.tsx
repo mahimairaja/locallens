@@ -42,18 +42,6 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h2
-        className="text-2xl"
-        style={{
-          fontFamily: "var(--font-sans)",
-          fontWeight: 600,
-          color: "var(--text-primary)",
-          letterSpacing: "-0.015em",
-        }}
-      >
-        Settings
-      </h2>
-
       {/* Auth Status */}
       <Card>
         <CardHeader>

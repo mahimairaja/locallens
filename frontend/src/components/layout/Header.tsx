@@ -5,7 +5,7 @@ const pageTitles: Record<string, string> = {
   "/index": "Index Files",
   "/search": "Search",
   "/ask": "Ask",
-  "/stack": "Stack",
+  "/stack": "Under the Hood",
   "/settings": "Settings",
   "/audit": "Audit Log",
 };

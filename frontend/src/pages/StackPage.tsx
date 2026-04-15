@@ -4,13 +4,18 @@ import {
   BarChart3,
   BookOpen,
   Box,
+  Cpu,
   Database,
   ExternalLink,
   Filter,
   Gauge,
   GitBranch,
+  Globe,
+  HardDrive,
   Layers,
+  Monitor,
   Search,
+  Server,
 } from "lucide-react";
 
 // ============================================================================
@@ -23,6 +28,7 @@ interface StackComponent {
   purpose: string;
   version: string;
   role: string;
+  layer: "Storage" | "AI Models" | "Backend" | "Frontend";
 }
 
 const STACK: StackComponent[] = [
@@ -31,50 +37,67 @@ const STACK: StackComponent[] = [
     purpose: "Embedded vector store for the CLI",
     version: "qdrant-edge-py 0.6",
     role: "locallens index writes here, locally, on-device",
+    layer: "Storage",
   },
   {
     name: "Qdrant Server",
     purpose: "Shared vector store for the web backend",
     version: "qdrant/qdrant:v1.14.0",
     role: "Receives sync pushes from the CLI, serves the web app",
+    layer: "Storage",
   },
   {
     name: "all-MiniLM-L6-v2",
     purpose: "Sentence embeddings",
     version: "384-dim, cosine",
     role: "Encodes text chunks to vectors (via sentence-transformers)",
+    layer: "AI Models",
   },
   {
     name: "Ollama + qwen2.5:3b",
     purpose: "Local LLM for RAG answers",
     version: "Q4_K_M quantized",
     role: "Generates grounded answers from retrieved chunks",
+    layer: "AI Models",
   },
   {
     name: "Moonshine tiny-en",
     purpose: "On-device speech-to-text",
     version: "bundled assets",
     role: "Transcribes voice input on the /ask page",
+    layer: "AI Models",
   },
   {
     name: "Piper TTS (lessac-medium)",
     purpose: "On-device text-to-speech",
     version: "VITS / ONNX, auto-downloaded",
     role: "Plays back assistant answers via inline Listen button",
+    layer: "AI Models",
   },
   {
     name: "FastAPI",
     purpose: "HTTP API for the web app",
     version: "Python 3.11+",
     role: "Talks to Qdrant Server, streams RAG responses",
+    layer: "Backend",
   },
   {
     name: "React + Vite",
     purpose: "Frontend",
     version: "React 19, Vite 8",
     role: "This UI you're looking at",
+    layer: "Frontend",
   },
 ];
+
+const LAYER_ORDER: StackComponent["layer"][] = ["Storage", "AI Models", "Backend", "Frontend"];
+
+const LAYER_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  Storage: Database,
+  "AI Models": Cpu,
+  Backend: Server,
+  Frontend: Globe,
+};
 
 interface EdgeFeature {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
@@ -149,6 +172,18 @@ const EDGE_FEATURES: EdgeFeature[] = [
   },
 ];
 
+interface SystemReq {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+}
+
+const SYSTEM_REQUIREMENTS: SystemReq[] = [
+  { label: "RAM", value: "4 GB minimum (8 GB recommended for LLM)", icon: Cpu },
+  { label: "Disk", value: "~2 GB for models + index data", icon: HardDrive },
+  { label: "OS", value: "macOS 12+, Linux (x86_64 / arm64), Windows 10+ (WSL2)", icon: Monitor },
+];
+
 // ============================================================================
 
 export default function StackPage() {
@@ -178,10 +213,10 @@ export default function StackPage() {
         </p>
       </div>
 
-      {/* Section 1 — Stack components */}
-      <section className="space-y-4">
+      {/* Section 1 — Stack components grouped by layer */}
+      <section className="space-y-8">
         <h3
-          className="text-base"
+          className="text-xl"
           style={{
             fontFamily: "var(--font-sans)",
             fontWeight: 600,
@@ -191,55 +226,78 @@ export default function StackPage() {
         >
           The stack
         </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STACK.map((item) => (
-            <Card key={item.name}>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2">
-                  <Box className="h-4 w-4" style={{ color: "var(--accent)" }} />
-                  <span
-                    style={{
-                      fontFamily: "var(--font-sans)",
-                      fontWeight: 600,
-                      color: "var(--text-primary)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
-                    {item.name}
-                  </span>
-                </div>
-                <p
-                  className="mt-2 text-xs"
-                  style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}
-                >
-                  {item.purpose}
-                </p>
-                <p
-                  className="mt-2 text-[0.7rem]"
+        {LAYER_ORDER.map((layer) => {
+          const items = STACK.filter((s) => s.layer === layer);
+          if (items.length === 0) return null;
+          const LayerIcon = LAYER_ICONS[layer] || Box;
+          return (
+            <div key={layer} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <LayerIcon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                <span
+                  className="text-xs uppercase"
                   style={{
-                    color: "var(--text-tertiary)",
-                    fontFamily: "var(--font-mono)",
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    letterSpacing: "0.08em",
                   }}
                 >
-                  {item.version}
-                </p>
-                <p
-                  className="mt-3 text-xs"
-                  style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}
-                >
-                  {item.role}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  {layer}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {items.map((item) => (
+                  <Card key={item.name} className="sk-lift">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2">
+                        <Box className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                        <span
+                          style={{
+                            fontFamily: "var(--font-sans)",
+                            fontWeight: 600,
+                            color: "var(--text-primary)",
+                            fontSize: "0.95rem",
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                      </div>
+                      <p
+                        className="mt-2 text-xs"
+                        style={{ color: "var(--text-secondary)", lineHeight: 1.5, fontFamily: "var(--font-sans)" }}
+                      >
+                        {item.purpose}
+                      </p>
+                      <p
+                        className="mt-2 text-[0.7rem]"
+                        style={{
+                          color: "var(--text-tertiary)",
+                          fontFamily: "var(--font-mono)",
+                        }}
+                      >
+                        {item.version}
+                      </p>
+                      <p
+                        className="mt-3 text-xs"
+                        style={{ color: "var(--text-secondary)", lineHeight: 1.5, fontFamily: "var(--font-sans)" }}
+                      >
+                        {item.role}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </section>
 
       {/* Section 2 — Qdrant Edge features we leverage */}
       <section className="space-y-4">
         <div>
           <h3
-            className="text-base"
+            className="text-xl"
             style={{
               fontFamily: "var(--font-sans)",
               fontWeight: 600,
@@ -260,7 +318,7 @@ export default function StackPage() {
         </div>
         <div className="space-y-3">
           {EDGE_FEATURES.map((feature) => (
-            <Card key={feature.name}>
+            <Card key={feature.name} className="sk-lift">
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
                   <div
@@ -285,13 +343,13 @@ export default function StackPage() {
                     </p>
                     <p
                       className="text-sm"
-                      style={{ color: "var(--text-secondary)", lineHeight: 1.55 }}
+                      style={{ color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--font-sans)" }}
                     >
                       {feature.what}
                     </p>
                     <p
                       className="text-sm"
-                      style={{ color: "var(--text-secondary)", lineHeight: 1.55 }}
+                      style={{ color: "var(--text-secondary)", lineHeight: 1.55, fontFamily: "var(--font-sans)" }}
                     >
                       <span
                         style={{
@@ -315,6 +373,7 @@ export default function StackPage() {
                         fontFamily: "var(--font-mono)",
                         border: "1px solid var(--border)",
                         lineHeight: 1.55,
+                        borderRadius: "8px",
                       }}
                     >
                       {feature.snippet}
@@ -330,7 +389,7 @@ export default function StackPage() {
       {/* Section 3 — Try it yourself */}
       <section className="space-y-4">
         <h3
-          className="text-base"
+          className="text-xl"
           style={{
             fontFamily: "var(--font-sans)",
             fontWeight: 600,
@@ -341,7 +400,7 @@ export default function StackPage() {
           Try it yourself
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Card>
+          <Card className="sk-lift">
             <CardContent className="p-5">
               <div className="flex items-center gap-2">
                 <Database className="h-4 w-4" style={{ color: "var(--accent)" }} />
@@ -357,7 +416,7 @@ export default function StackPage() {
               </div>
               <p
                 className="mt-2 text-xs"
-                style={{ color: "var(--text-secondary)" }}
+                style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
               >
                 Add Qdrant Edge to any Python project:
               </p>
@@ -368,13 +427,14 @@ export default function StackPage() {
                   color: "var(--text-primary)",
                   fontFamily: "var(--font-mono)",
                   border: "1px solid var(--border)",
+                  borderRadius: "8px",
                 }}
               >
                 pip install qdrant-edge-py
               </pre>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="sk-lift">
             <CardContent className="p-5">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" style={{ color: "var(--accent)" }} />
@@ -390,7 +450,7 @@ export default function StackPage() {
               </div>
               <p
                 className="mt-2 text-xs"
-                style={{ color: "var(--text-secondary)" }}
+                style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
               >
                 The quickstart walks through shard setup, filtered queries,
                 facets, and snapshot sync.
@@ -407,7 +467,7 @@ export default function StackPage() {
               </a>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="sk-lift">
             <CardContent className="p-5">
               <div className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4" style={{ color: "var(--accent)" }} />
@@ -423,7 +483,7 @@ export default function StackPage() {
               </div>
               <p
                 className="mt-2 text-xs"
-                style={{ color: "var(--text-secondary)" }}
+                style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
               >
                 Reference Python and Rust implementations in the Qdrant
                 repository.
@@ -441,6 +501,59 @@ export default function StackPage() {
             </CardContent>
           </Card>
         </div>
+      </section>
+
+      {/* Section 4 — System Requirements */}
+      <section className="space-y-4">
+        <h3
+          className="text-xl"
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: 600,
+            color: "var(--text-primary)",
+            letterSpacing: "-0.005em",
+          }}
+        >
+          System Requirements
+        </h3>
+        <Card>
+          <CardContent className="p-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {SYSTEM_REQUIREMENTS.map((req) => (
+                <div key={req.label} className="flex items-start gap-3">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: "var(--accent-soft)" }}
+                  >
+                    <req.icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                  </div>
+                  <div>
+                    <p
+                      className="text-sm"
+                      style={{
+                        fontFamily: "var(--font-sans)",
+                        fontWeight: 600,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      {req.label}
+                    </p>
+                    <p
+                      className="mt-0.5 text-xs"
+                      style={{
+                        color: "var(--text-secondary)",
+                        fontFamily: "var(--font-sans)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {req.value}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <p
