@@ -39,11 +39,13 @@ def _strip_frontmatter(text: str) -> str:
 
 def _resolve_wikilinks(text: str) -> str:
     """Replace [[page]] with 'page' and [[page|display]] with 'display'."""
+
     def _replace(m: re.Match) -> str:
         display = m.group(2)
         if display:
             return display
         return m.group(1)
+
     return _WIKILINK_RE.sub(_replace, text)
 
 
@@ -72,10 +74,14 @@ class ObsidianExtractor(LocalLensExtractor):
             try:
                 text = file_path.read_text(encoding="latin-1")
             except Exception as exc:
-                console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+                )
                 return ""
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+            )
             return ""
 
         text = _strip_frontmatter(text)

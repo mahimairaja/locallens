@@ -139,9 +139,7 @@ def _create_and_download_full_snapshot(url: str, dest: Path) -> None:
         response.raise_for_status()
         snapshot_name = response.json()["result"]["name"]
 
-        download_url = (
-            f"{url}/collections/{COLLECTION_NAME}/snapshots/{snapshot_name}"
-        )
+        download_url = f"{url}/collections/{COLLECTION_NAME}/snapshots/{snapshot_name}"
         with client.stream("GET", download_url) as stream:
             stream.raise_for_status()
             with open(dest, "wb") as f:

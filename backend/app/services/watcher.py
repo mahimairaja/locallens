@@ -7,18 +7,17 @@ that have been previously indexed (tracked in watched_folders.json).
 import json
 import logging
 import threading
-import time
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 logger = logging.getLogger(__name__)
 
 _WATCHED_FILE = Path.home() / ".locallens" / "watched_folders.json"
 
-_observer: Optional[Observer] = None
+_observer: Observer | None = None
 _watched_folders: set[str] = set()
 _event_counts: dict[str, int] = {"created": 0, "modified": 0, "deleted": 0}
 _lock = threading.Lock()
@@ -33,12 +32,12 @@ class _IndexHandler(FileSystemEventHandler):
     def on_created(self, event: FileSystemEvent):
         if event.is_directory:
             return
-        self._handle_change(event.src_path, "created")
+        self._handle_change(str(event.src_path), "created")
 
     def on_modified(self, event: FileSystemEvent):
         if event.is_directory:
             return
-        self._handle_change(event.src_path, "modified")
+        self._handle_change(str(event.src_path), "modified")
 
     def on_deleted(self, event: FileSystemEvent):
         if event.is_directory:
@@ -47,15 +46,15 @@ class _IndexHandler(FileSystemEventHandler):
             _event_counts["deleted"] += 1
         try:
             from app.services import store
+
             store.ensure_collection()
-            store.delete_by_file(str(Path(event.src_path).resolve()))
+            store.delete_by_file(str(Path(str(event.src_path)).resolve()))
             logger.info("Watcher: removed points for deleted file %s", event.src_path)
         except Exception as exc:
             logger.warning("Watcher: delete failed for %s: %s", event.src_path, exc)
 
     def _handle_change(self, file_path: str, event_type: str):
         from app.config import settings
-        from app.extractors import get_extractor
 
         path = Path(file_path)
         supported = {ext.strip() for ext in settings.supported_extensions.split(",")}
@@ -70,7 +69,6 @@ class _IndexHandler(FileSystemEventHandler):
             _event_counts[event_type] += 1
 
         try:
-            from app.services.indexer import index_folder
             # Re-index just the parent to pick up the changed file
             # Use force=True since the file content changed
             logger.info("Watcher: re-indexing %s (%s)", path.name, event_type)
@@ -85,7 +83,8 @@ def _reindex_single_file(file_path: Path):
     """Re-index a single file."""
     import hashlib
     import uuid
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from qdrant_client.models import PointStruct
 
     from app.config import settings
@@ -114,15 +113,22 @@ def _reindex_single_file(file_path: Path):
     fhash = h.hexdigest()
 
     extractor_name = getattr(extractor, "extractor_name", "unknown")
-    chunks = chunk_text(text, settings.chunk_size, settings.chunk_overlap, file_type=file_path.suffix.lower())
+    chunks = chunk_text(
+        text,
+        settings.chunk_size,
+        settings.chunk_overlap,
+        file_type=file_path.suffix.lower(),
+    )
     if not chunks:
         return
 
     embeddings = embedder.encode(chunks)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     try:
-        file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc).isoformat()
+        file_mtime = datetime.fromtimestamp(
+            file_path.stat().st_mtime, tz=UTC
+        ).isoformat()
     except OSError:
         file_mtime = None
 
@@ -147,10 +153,15 @@ def _reindex_single_file(file_path: Path):
     ]
 
     store.upsert_chunks(points)
-    bm25.add_documents([
-        {"id": str(uuid.uuid5(UUID_NAMESPACE, f"{abs_path}:{i}")), "chunk_text": chunk}
-        for i, chunk in enumerate(chunks)
-    ])
+    bm25.add_documents(
+        [
+            {
+                "id": str(uuid.uuid5(UUID_NAMESPACE, f"{abs_path}:{i}")),
+                "chunk_text": chunk,
+            }
+            for i, chunk in enumerate(chunks)
+        ]
+    )
 
 
 def load_watched_folders() -> set[str]:
@@ -175,7 +186,7 @@ def add_folder(folder: str) -> None:
     _watched_folders.add(folder)
     save_watched_folders()
 
-    if _observer and _observer.is_alive():
+    if _observer is not None and _observer.is_alive():
         _observer.schedule(_IndexHandler(folder), folder, recursive=True)
         logger.info("Watcher: now watching %s", folder)
 
@@ -213,7 +224,7 @@ def start() -> None:
 def stop() -> None:
     """Stop the watcher."""
     global _observer
-    if _observer:
+    if _observer is not None:
         _observer.stop()
         _observer.join(timeout=5)
         _observer = None
@@ -228,7 +239,9 @@ def restart() -> None:
 def get_status() -> dict:
     """Return watcher status."""
     return {
-        "running": _observer is not None and _observer.is_alive() if _observer else False,
+        "running": _observer is not None and _observer.is_alive()
+        if _observer
+        else False,
         "folders": list(_watched_folders),
         "event_counts": dict(_event_counts),
     }

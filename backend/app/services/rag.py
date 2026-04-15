@@ -1,17 +1,20 @@
-import httpx
 import json
 import logging
-from typing import Generator
+
+import httpx
+
 from app.config import settings
-from app.services.searcher import search
 from app.models import AskSource
+from app.services.searcher import search
 
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a helpful assistant. Answer the question based ONLY on the provided context. If you cannot find the answer in the context, say so. Be concise and accurate."""
 
 
-def get_rag_context(question: str, top_k: int, collection: str | None = None) -> tuple[str, list[AskSource]]:
+def get_rag_context(
+    question: str, top_k: int, collection: str | None = None
+) -> tuple[str, list[AskSource]]:
     """Retrieve context and sources for RAG."""
     result = search(question, top_k, collection=collection)
     if not result.results:
@@ -21,11 +24,13 @@ def get_rag_context(question: str, top_k: int, collection: str | None = None) ->
     sources = []
     for r in result.results:
         context_parts.append(f"[From {r.file_name}]:\n{r.chunk_text}")
-        sources.append(AskSource(
-            file_name=r.file_name,
-            file_path=r.file_path,
-            chunk_preview=r.chunk_text[:200],
-        ))
+        sources.append(
+            AskSource(
+                file_name=r.file_name,
+                file_path=r.file_path,
+                chunk_preview=r.chunk_text[:200],
+            )
+        )
 
     return "\n\n---\n\n".join(context_parts), sources
 
@@ -36,7 +41,10 @@ def stream_answer(question: str, top_k: int = 3, collection: str | None = None):
     context, sources = get_rag_context(question, top_k, collection=collection)
 
     if not context:
-        yield ("I don't have any indexed documents to answer this question. Please index some files first.", None)
+        yield (
+            "I don't have any indexed documents to answer this question. Please index some files first.",
+            None,
+        )
         yield (None, sources)
         return
 

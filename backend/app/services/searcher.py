@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Optional
 
 from app.models import SearchResponse, SearchResult
 from app.services import bm25, embedder, store
@@ -43,8 +42,8 @@ def search(
     file_type: str | None = None,
     path_prefix: str | None = None,
     mode: str = "hybrid",
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     collection: str | None = None,
 ) -> SearchResponse:
     """Search with semantic, keyword, or hybrid mode.
@@ -67,10 +66,26 @@ def search(
     if mode == "keyword":
         results = _keyword_search(query, top_k, file_type, collection=collection)
     elif mode == "semantic":
-        results = _semantic_search(query, top_k, file_type, path_prefix, date_from, date_to, collection=collection)
+        results = _semantic_search(
+            query,
+            top_k,
+            file_type,
+            path_prefix,
+            date_from,
+            date_to,
+            collection=collection,
+        )
     else:
         # Hybrid: combine semantic + keyword via RRF
-        semantic = _semantic_search_raw(query, top_k * 2, file_type, path_prefix, date_from, date_to, collection=collection)
+        semantic = _semantic_search_raw(
+            query,
+            top_k * 2,
+            file_type,
+            path_prefix,
+            date_from,
+            date_to,
+            collection=collection,
+        )
         bm25_hits = bm25.search(query, top_k * 2)
 
         if not bm25_hits:
@@ -91,35 +106,49 @@ def search(
 
 
 def _semantic_search_raw(
-    query: str, top_k: int, file_type, path_prefix, date_from, date_to,
+    query: str,
+    top_k: int,
+    file_type,
+    path_prefix,
+    date_from,
+    date_to,
     collection: str | None = None,
 ) -> list[tuple[str, dict, float]]:
     """Raw semantic search returning (point_id, payload, score) tuples."""
     vector = embedder.encode_query(query)
     query_filter = store.build_search_filter(
-        file_type=file_type, path_prefix=path_prefix,
-        date_from=date_from, date_to=date_to,
+        file_type=file_type,
+        path_prefix=path_prefix,
+        date_from=date_from,
+        date_to=date_to,
     )
-    points = store.search(vector, top_k, query_filter=query_filter, collection=collection)
-    return [
-        (str(p.id), p.payload or {}, float(p.score))
-        for p in points
-    ]
+    points = store.search(
+        vector, top_k, query_filter=query_filter, collection=collection
+    )
+    return [(str(p.id), p.payload or {}, float(p.score)) for p in points]
 
 
-def _semantic_search(query, top_k, file_type, path_prefix, date_from, date_to, collection=None) -> list[SearchResult]:
-    raw = _semantic_search_raw(query, top_k, file_type, path_prefix, date_from, date_to, collection=collection)
+def _semantic_search(
+    query, top_k, file_type, path_prefix, date_from, date_to, collection=None
+) -> list[SearchResult]:
+    raw = _semantic_search_raw(
+        query, top_k, file_type, path_prefix, date_from, date_to, collection=collection
+    )
     return _format_semantic(raw, top_k)
 
 
-def _format_semantic(raw: list[tuple[str, dict, float]], top_k: int) -> list[SearchResult]:
+def _format_semantic(
+    raw: list[tuple[str, dict, float]], top_k: int
+) -> list[SearchResult]:
     results = []
     for rank, (pid, payload, score) in enumerate(raw[:top_k], start=1):
         results.append(_make_result(rank, pid, payload, score))
     return results
 
 
-def _keyword_search(query: str, top_k: int, file_type: str | None, collection: str | None = None) -> list[SearchResult]:
+def _keyword_search(
+    query: str, top_k: int, file_type: str | None, collection: str | None = None
+) -> list[SearchResult]:
     """Pure BM25 keyword search."""
     hits = bm25.search(query, top_k * 2)
     results = []

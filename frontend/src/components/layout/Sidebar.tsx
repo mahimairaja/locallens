@@ -29,6 +29,7 @@ const navItems = [
 interface ServiceStatus {
   qdrant: "checking" | "online" | "offline";
   ollama: "checking" | "online" | "offline";
+  overall: "checking" | "connected" | "degraded" | "offline";
 }
 
 export function Sidebar() {
@@ -36,6 +37,7 @@ export function Sidebar() {
   const [status, setStatus] = useState<ServiceStatus>({
     qdrant: "checking",
     ollama: "checking",
+    overall: "checking",
   });
   const [authStatus, setAuthStatus] = useState<{
     auth_enabled: boolean;
@@ -53,21 +55,25 @@ export function Sidebar() {
   useEffect(() => {
     async function checkServices() {
       try {
-        await api.checkHealth();
-        setStatus((s) => ({ ...s, qdrant: "online" }));
-      } catch {
-        setStatus((s) => ({ ...s, qdrant: "offline" }));
-      }
-
-      try {
-        const res = await fetch("/api/health");
-        if (res.ok) {
-          setStatus((s) => ({ ...s, ollama: "online" }));
+        const data = await api.checkHealth() as {
+          qdrant: string;
+          ollama: string;
+          search_available: boolean;
+          ask_available: boolean;
+        };
+        const qdrant = data.qdrant === "ok" ? "online" : "offline";
+        const ollama = data.ollama === "ok" ? "online" : "offline";
+        let overall: ServiceStatus["overall"];
+        if (qdrant === "online" && ollama === "online") {
+          overall = "connected";
+        } else if (qdrant === "online" && ollama === "offline") {
+          overall = "degraded";
         } else {
-          setStatus((s) => ({ ...s, ollama: "offline" }));
+          overall = "offline";
         }
+        setStatus({ qdrant, ollama, overall });
       } catch {
-        setStatus((s) => ({ ...s, ollama: "offline" }));
+        setStatus({ qdrant: "offline", ollama: "offline", overall: "offline" });
       }
     }
 
@@ -300,12 +306,62 @@ export function Sidebar() {
           icon={Database}
           label="Qdrant"
           status={status.qdrant}
+          tooltip={status.qdrant === "online" ? "Qdrant vector store is reachable" : status.qdrant === "offline" ? "Qdrant vector store is unreachable" : "Checking Qdrant connection..."}
         />
         <StatusIndicator
           icon={Cpu}
           label="Ollama"
           status={status.ollama}
+          tooltip={status.ollama === "online" ? "Ollama LLM is running" : status.ollama === "offline" ? "Ollama LLM is not running — Ask will be unavailable" : "Checking Ollama connection..."}
         />
+        <div
+          className="flex items-center gap-2 pt-1.5 mt-1"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          <span
+            className="text-[0.68rem]"
+            style={{
+              fontFamily: "var(--font-sans)",
+              color: status.overall === "connected"
+                ? "#22c55e"
+                : status.overall === "degraded"
+                  ? "#f59e0b"
+                  : status.overall === "offline"
+                    ? "#ef4444"
+                    : "var(--text-tertiary)",
+              fontWeight: 500,
+            }}
+            title={
+              status.overall === "connected"
+                ? "All services are running"
+                : status.overall === "degraded"
+                  ? "Search works but Ask requires Ollama"
+                  : status.overall === "offline"
+                    ? "Backend or Qdrant is unreachable"
+                    : "Checking services..."
+            }
+          >
+            <span
+              className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+              style={{
+                background: status.overall === "connected"
+                  ? "#22c55e"
+                  : status.overall === "degraded"
+                    ? "#f59e0b"
+                    : status.overall === "offline"
+                      ? "#ef4444"
+                      : "var(--text-tertiary)",
+              }}
+            />
+            {status.overall === "connected"
+              ? "Connected"
+              : status.overall === "degraded"
+                ? "Degraded"
+                : status.overall === "offline"
+                  ? "Offline"
+                  : "Checking..."}
+          </span>
+        </div>
       </div>
 
       {/* Version */}
@@ -325,13 +381,15 @@ function StatusIndicator({
   icon: Icon,
   label,
   status,
+  tooltip,
 }: {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   status: "checking" | "online" | "offline";
+  tooltip?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className="flex items-center gap-2 text-xs" title={tooltip}>
       <Icon className="h-3.5 w-3.5" style={{ color: "var(--text-tertiary)" }} />
       <span style={{ fontFamily: "var(--font-sans)", color: "var(--text-tertiary)", fontSize: "0.72rem" }}>
         {label}

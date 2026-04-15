@@ -59,7 +59,7 @@ def _split_by_pattern(text: str, pattern: re.Pattern) -> list[str]:
     sections = []
     # Text before first match
     if positions[0] > 0:
-        pre = text[:positions[0]].strip()
+        pre = text[: positions[0]].strip()
         if pre:
             sections.append(pre)
 
@@ -72,7 +72,9 @@ def _split_by_pattern(text: str, pattern: re.Pattern) -> list[str]:
     return sections
 
 
-def chunk_text(text: str, size: int = MAX_CHUNK, overlap: int = OVERLAP, file_type: str = "") -> list[str]:
+def chunk_text(
+    text: str, size: int = MAX_CHUNK, overlap: int = OVERLAP, file_type: str = ""
+) -> list[str]:
     """Structure-aware chunking. Falls back to simple subdivision for unknown types.
 
     Args:

@@ -28,8 +28,12 @@ class CodeExtractor(LocalLensExtractor):
                 content = file_path.read_text(encoding="latin-1")
                 return f"# File: {file_path.name}\n{content}"
             except Exception as exc:
-                console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+                )
                 return ""
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+            )
             return ""

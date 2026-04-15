@@ -3,10 +3,8 @@
 import hashlib
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
-import pytest
 
 from tests.conftest import TEST_COLLECTION
 
@@ -29,11 +27,15 @@ def _index_file(client, embedder, file_path: Path, extractor_name: str, text: st
     """Index a single file's text into the test collection."""
     from qdrant_client.models import PointStruct
 
-    # Simple chunking — for test purposes, single chunk per file
-    chunks = [text] if len(text) < 500 else [text[i:i + 500] for i in range(0, len(text), 450)]
+    # Simple chunking -- for test purposes, single chunk per file
+    chunks = (
+        [text]
+        if len(text) < 500
+        else [text[i : i + 500] for i in range(0, len(text), 450)]
+    )
     abs_path = str(file_path.resolve())
     fhash = _file_hash(file_path)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     embeddings = embedder.encode(chunks).tolist()
     points = [
@@ -51,7 +53,7 @@ def _index_file(client, embedder, file_path: Path, extractor_name: str, text: st
                 "extractor": extractor_name,
                 "page_number": None,
                 "file_modified_at": datetime.fromtimestamp(
-                    file_path.stat().st_mtime, tz=timezone.utc
+                    file_path.stat().st_mtime, tz=UTC
                 ).isoformat(),
             },
         )
@@ -106,6 +108,30 @@ class TestIndex:
         count = _index_file(qdrant_client, embedder, fp, "email", text)
         assert count >= 1
 
+    def test_payload_fields(self, qdrant_client, test_folder):
+        """Verify indexed points have all expected payload fields."""
+        results = qdrant_client.scroll(
+            collection_name=TEST_COLLECTION,
+            limit=1,
+            with_payload=True,
+            with_vectors=False,
+        )
+        points = results[0]
+        assert len(points) > 0
+
+        payload = points[0].payload
+        expected_fields = {
+            "file_path",
+            "file_name",
+            "file_type",
+            "chunk_index",
+            "chunk_text",
+            "file_hash",
+            "indexed_at",
+        }
+        for field in expected_fields:
+            assert field in payload, f"Missing payload field: {field}"
+
 
 class TestSearch:
     """Test searching for indexed content."""
@@ -124,7 +150,6 @@ class TestSearch:
         )
 
         assert len(results.points) > 0
-        # The sample.txt file should be in the top results
         file_names = [p.payload.get("file_name", "") for p in results.points]
         assert "sample.txt" in file_names
 

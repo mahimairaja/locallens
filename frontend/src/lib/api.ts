@@ -168,7 +168,10 @@ export const api = {
     postNoNs<{ path: string | null; cancelled: boolean }>("/api/fs/pick-folder", {}),
 
   // Health
-  checkHealth: () => getNoNs<{ status: string }>("/api/health"),
+  checkHealth: () =>
+    getNoNs<{ qdrant: string; ollama: string; search_available: boolean; ask_available: boolean }>(
+      "/api/health"
+    ),
 
   // Namespaces
   getNamespaces: () =>

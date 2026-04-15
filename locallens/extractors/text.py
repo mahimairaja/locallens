@@ -26,8 +26,12 @@ class TextExtractor(LocalLensExtractor):
             try:
                 return file_path.read_text(encoding="latin-1")
             except Exception as exc:
-                console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+                )
                 return ""
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+            )
             return ""

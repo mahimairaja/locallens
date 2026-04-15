@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+
 from app.auth import check_namespace_access, require_auth
 from app.config import collection_for_namespace
 from app.models import StatsResponse
@@ -26,8 +27,11 @@ async def get_stats(
         info = store.get_collection_info(collection=collection)
     except Exception:
         return StatsResponse(
-            total_files=0, total_chunks=0, file_types={},
-            storage_size_mb=0, top_searches=[]
+            total_files=0,
+            total_chunks=0,
+            file_types={},
+            storage_size_mb=0,
+            top_searches=[],
         )
 
     file_types = dict(store.facet_file_types(limit=20, collection=collection))

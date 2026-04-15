@@ -7,9 +7,8 @@ and hashed API key.  The database lives at ``~/.locallens/audit.db``.
 import logging
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from app.auth import hash_key
 
@@ -46,11 +45,11 @@ def _get_conn() -> sqlite3.Connection:
 def log(
     operation: str,
     namespace: str = "default",
-    api_key: Optional[str] = None,
-    detail: Optional[str] = None,
+    api_key: str | None = None,
+    detail: str | None = None,
 ) -> None:
     """Write an audit record."""
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     key_hash = hash_key(api_key) if api_key else None
     with _lock:
         conn = _get_conn()
@@ -64,8 +63,8 @@ def log(
 def query(
     page: int = 1,
     page_size: int = 50,
-    operation: Optional[str] = None,
-    namespace: Optional[str] = None,
+    operation: str | None = None,
+    namespace: str | None = None,
 ) -> dict:
     """Return paginated audit log entries.
 
@@ -86,7 +85,9 @@ def query(
         if where_parts:
             where = "WHERE " + " AND ".join(where_parts)
 
-        total = conn.execute(f"SELECT COUNT(*) FROM audit_log {where}", params).fetchone()[0]
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM audit_log {where}", params
+        ).fetchone()[0]
 
         offset = (page - 1) * page_size
         rows = conn.execute(

@@ -26,5 +26,7 @@ class DocxExtractor(LocalLensExtractor):
             doc = Document(file_path)
             return "\n".join(para.text for para in doc.paragraphs)
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract DOCX {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract DOCX {file_path}: {exc}[/yellow]"
+            )
             return ""

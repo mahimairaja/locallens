@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+
 from app.auth import require_auth
 from app.services import watcher
 

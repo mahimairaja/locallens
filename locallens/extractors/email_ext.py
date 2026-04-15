@@ -12,6 +12,7 @@ console = Console()
 
 try:
     from oletools import oleobj  # noqa: F401 — probe import
+
     _oletools_available = True
 except ImportError:
     _oletools_available = False
@@ -74,7 +75,9 @@ class EmailExtractor(LocalLensExtractor):
             header = f"Subject: {subject} / From: {sender} / To: {to} / Date: {date}"
             return f"{header}\n\n{body}".strip()
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract .eml {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract .eml {file_path}: {exc}[/yellow]"
+            )
             return ""
 
     def _extract_msg(self, file_path: Path) -> str:
@@ -108,18 +111,34 @@ class EmailExtractor(LocalLensExtractor):
                 sender = ""
                 body = ""
                 if ole.exists("__substg1.0_0037001F"):
-                    subject = ole.openstream("__substg1.0_0037001F").read().decode("utf-16-le", errors="replace")
+                    subject = (
+                        ole.openstream("__substg1.0_0037001F")
+                        .read()
+                        .decode("utf-16-le", errors="replace")
+                    )
                 if ole.exists("__substg1.0_0C1A001F"):
-                    sender = ole.openstream("__substg1.0_0C1A001F").read().decode("utf-16-le", errors="replace")
+                    sender = (
+                        ole.openstream("__substg1.0_0C1A001F")
+                        .read()
+                        .decode("utf-16-le", errors="replace")
+                    )
                 if ole.exists("__substg1.0_1000001F"):
-                    body = ole.openstream("__substg1.0_1000001F").read().decode("utf-16-le", errors="replace")
+                    body = (
+                        ole.openstream("__substg1.0_1000001F")
+                        .read()
+                        .decode("utf-16-le", errors="replace")
+                    )
                 ole.close()
 
                 header = f"Subject: {subject} / From: {sender}"
                 return f"{header}\n\n{body}".strip()
             except Exception as exc:
-                console.print(f"[yellow]Warning: Could not extract .msg {file_path}: {exc}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Could not extract .msg {file_path}: {exc}[/yellow]"
+                )
                 return ""
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract .msg {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract .msg {file_path}: {exc}[/yellow]"
+            )
             return ""

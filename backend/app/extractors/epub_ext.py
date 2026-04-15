@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 try:
     import ebooklib  # noqa: F401
     from ebooklib import epub as _epub_mod  # noqa: F401
+
     _ebooklib_available = True
 except ImportError:
     _ebooklib_available = False
@@ -23,9 +24,10 @@ class EpubExtractor:
             logger.warning("ebooklib not installed, cannot extract %s", file_path)
             return ""
         try:
-            from ebooklib import epub, ITEM_DOCUMENT
-            from html.parser import HTMLParser
             import io
+            from html.parser import HTMLParser
+
+            from ebooklib import ITEM_DOCUMENT, epub
 
             book = epub.read_epub(str(file_path), options={"ignore_ncx": True})
 
@@ -53,7 +55,9 @@ class EpubExtractor:
                 parser.feed(html_text)
                 text = parser.get_text().strip()
                 if text:
-                    chapter_title = Path(item.get_name()).stem.replace("_", " ").replace("-", " ")
+                    chapter_title = (
+                        Path(item.get_name()).stem.replace("_", " ").replace("-", " ")
+                    )
                     sections.append(f"## {chapter_title}\n\n{text}")
 
             return "\n\n".join(sections)

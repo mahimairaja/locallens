@@ -65,7 +65,9 @@ def _declare_payload_indexes(client: QdrantClient, collection: str) -> None:
                 field_schema=PayloadSchemaType.KEYWORD,
             )
         except Exception as exc:
-            logger.debug("create_payload_index(%s, %s) skipped: %s", collection, field, exc)
+            logger.debug(
+                "create_payload_index(%s, %s) skipped: %s", collection, field, exc
+            )
     _indexes_declared.add(collection)
 
 
@@ -136,20 +138,24 @@ def build_search_filter(
     if file_type:
         must.append(FieldCondition(key="file_type", match=MatchValue(value=file_type)))
     if path_prefix:
-        must.append(FieldCondition(key="file_path", match=MatchValue(value=path_prefix)))
+        must.append(
+            FieldCondition(key="file_path", match=MatchValue(value=path_prefix))
+        )
     if date_from or date_to:
         range_params = {}
         if date_from:
             range_params["gte"] = date_from
         if date_to:
             range_params["lte"] = date_to
-        must.append(FieldCondition(key="file_modified_at", range=Range(**range_params)))
+        must.append(FieldCondition(key="file_modified_at", range=Range(**range_params)))  # type: ignore[arg-type]
     if not must:
         return None
-    return Filter(must=must)
+    return Filter(must=must)  # type: ignore[arg-type]
 
 
-def facet_file_types(limit: int = 20, collection: str | None = None) -> list[tuple[str, int]]:
+def facet_file_types(
+    limit: int = 20, collection: str | None = None
+) -> list[tuple[str, int]]:
     """Facet over ``file_type`` for the stats endpoint."""
     col = _col(collection)
     client = _get_client()
@@ -161,7 +167,7 @@ def facet_file_types(limit: int = 20, collection: str | None = None) -> list[tup
             limit=limit,
             exact=True,
         )
-        return [(hit.value, int(hit.count)) for hit in response.hits]
+        return [(str(hit.value), int(hit.count)) for hit in response.hits]
     except Exception as exc:
         logger.debug("facet(file_type) failed, falling back to scroll: %s", exc)
         counts: dict[str, int] = {}
@@ -266,7 +272,7 @@ def list_namespaces() -> list[str]:
         if c.name == settings.collection_name:
             namespaces.append("default")
         elif c.name.startswith("locallens_"):
-            namespaces.append(c.name[len("locallens_"):])
+            namespaces.append(c.name[len("locallens_") :])
     # Always include "default" even if the collection hasn't been created yet.
     if "default" not in namespaces:
         namespaces.insert(0, "default")

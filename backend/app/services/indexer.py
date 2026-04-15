@@ -4,9 +4,9 @@ import hashlib
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Optional
 
 from qdrant_client.models import PointStruct
 
@@ -42,6 +42,7 @@ def _point_id(file_path: str, chunk_index: int) -> str:
 def _chunk_text(text: str, size: int, overlap: int, file_type: str = "") -> list[str]:
     """Structure-aware chunking. Delegates to the shared chunker module."""
     from locallens.chunker import chunk_text as _adaptive_chunk
+
     return _adaptive_chunk(text, size, overlap, file_type)
 
 
@@ -57,13 +58,15 @@ def _page_for_offset(char_offset: int, page_offsets: list[int]) -> int:
 
 
 def _assign_page_numbers(
-    text: str, chunks: list[str], page_offsets: list[int] | None,
+    text: str,
+    chunks: list[str],
+    page_offsets: list[int] | None,
 ) -> list[int | None]:
     """Map each chunk to its approximate page number."""
     if not page_offsets:
         return [None] * len(chunks)
 
-    result = []
+    result: list[int | None] = []
     search_start = 0
     for chunk in chunks:
         idx = text.find(chunk[:80], search_start)
@@ -82,7 +85,7 @@ def _get_supported_extensions() -> set[str]:
 def index_folder(
     folder_path: str,
     force: bool = False,
-    progress_callback: Optional[Callable[[IndexProgress], None]] = None,
+    progress_callback: Callable[[IndexProgress], None] | None = None,
     collection: str | None = None,
 ) -> IndexProgress:
     """Index all supported files in the given folder into Qdrant.
@@ -110,7 +113,9 @@ def index_folder(
     max_bytes = settings.max_file_size_mb * 1024 * 1024
 
     # Gather existing hashes for dedup
-    existing_hashes: set[str] = set() if force else store.get_all_hashes(collection=collection)
+    existing_hashes: set[str] = (
+        set() if force else store.get_all_hashes(collection=collection)
+    )
 
     # Scan for supported files
     progress = IndexProgress(status="scanning")
@@ -177,7 +182,10 @@ def index_folder(
 
         # Extract text, with page tracking for PDFs
         page_offsets = None
-        if hasattr(extractor, "extract_with_pages") and file_path.suffix.lower() == ".pdf":
+        if (
+            hasattr(extractor, "extract_with_pages")
+            and file_path.suffix.lower() == ".pdf"
+        ):
             text, page_offsets = extractor.extract_with_pages(file_path)
         else:
             text = extractor.extract(file_path)
@@ -188,20 +196,25 @@ def index_folder(
 
         extractor_name = getattr(extractor, "extractor_name", "unknown")
 
-        chunks = _chunk_text(text, settings.chunk_size, settings.chunk_overlap, file_type=file_path.suffix.lower())
+        chunks = _chunk_text(
+            text,
+            settings.chunk_size,
+            settings.chunk_overlap,
+            file_type=file_path.suffix.lower(),
+        )
         if not chunks:
             files_processed += 1
             continue
 
         page_numbers = _assign_page_numbers(text, chunks, page_offsets)
         embeddings = embedder.encode(chunks)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         abs_path = str(file_path.resolve())
 
         # File modification time for date-range filtering
         try:
             file_mtime = datetime.fromtimestamp(
-                file_path.stat().st_mtime, tz=timezone.utc
+                file_path.stat().st_mtime, tz=UTC
             ).isoformat()
         except OSError:
             file_mtime = None
@@ -227,10 +240,12 @@ def index_folder(
         ]
 
         store.upsert_chunks(points, collection=collection)
-        bm25.add_documents([
-            {"id": _point_id(abs_path, i), "chunk_text": chunk}
-            for i, chunk in enumerate(chunks)
-        ])
+        bm25.add_documents(
+            [
+                {"id": _point_id(abs_path, i), "chunk_text": chunk}
+                for i, chunk in enumerate(chunks)
+            ]
+        )
         chunks_created += len(chunks)
         if fhash in existing_hashes:
             files_updated += 1

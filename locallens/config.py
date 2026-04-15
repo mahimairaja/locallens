@@ -22,16 +22,35 @@ VECTOR_SIZE = 384
 DISTANCE = "Cosine"
 
 # Chunking
-CHUNK_SIZE = 500          # characters
-CHUNK_OVERLAP = 50        # characters
+CHUNK_SIZE = 500  # characters
+CHUNK_OVERLAP = 50  # characters
 
 # Indexing
 MAX_FILE_SIZE_MB = 10
 SKIP_HIDDEN = True
 SUPPORTED_EXTENSIONS = {
-    ".txt", ".md", ".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".csv", ".tsv", ".html",
-    ".py", ".js", ".ts", ".go", ".rs", ".java", ".c", ".cpp", ".rb",
-    ".eml", ".msg", ".epub",
+    ".txt",
+    ".md",
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".xls",
+    ".csv",
+    ".tsv",
+    ".html",
+    ".py",
+    ".js",
+    ".ts",
+    ".go",
+    ".rs",
+    ".java",
+    ".c",
+    ".cpp",
+    ".rb",
+    ".eml",
+    ".msg",
+    ".epub",
 }
 
 # Ollama (must be running locally: `ollama pull qwen2.5:3b`)

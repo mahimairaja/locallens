@@ -14,11 +14,10 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 
-from app.config import collection_for_namespace, settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ def _extract_bearer(request: Request) -> str | None:
     return None
 
 
-async def require_auth(request: Request) -> Optional[str]:
+async def require_auth(request: Request) -> str | None:
     """FastAPI dependency that enforces API key auth when configured.
 
     Returns the raw API key string (or ``None`` when auth is disabled).
@@ -68,7 +67,7 @@ async def require_auth(request: Request) -> Optional[str]:
     return token
 
 
-async def optional_auth(request: Request) -> Optional[str]:
+async def optional_auth(request: Request) -> str | None:
     """Like ``require_auth`` but never raises -- returns ``None`` silently."""
     if not settings.locallens_api_key:
         return None

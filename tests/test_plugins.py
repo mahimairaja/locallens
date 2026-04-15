@@ -65,6 +65,7 @@ class TestPluginDiscovery:
         for _ext, inst in plugins.items():
             # If any plugin is found, it should be a proper LocalLensExtractor
             from locallens.extractors.base import LocalLensExtractor
+
             assert isinstance(inst, LocalLensExtractor)
 
     def test_registry_has_core_extensions(self):
@@ -84,8 +85,9 @@ class TestPluginDiscovery:
 
     def test_local_lens_extractor_base_class(self):
         """LocalLensExtractor should be importable and usable as a base class."""
-        from locallens.extractors.base import LocalLensExtractor
         from pathlib import Path
+
+        from locallens.extractors.base import LocalLensExtractor
 
         class DummyExtractor(LocalLensExtractor):
             def supported_extensions(self):

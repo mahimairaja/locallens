@@ -14,6 +14,7 @@ import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.auth import require_auth
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ def _pick_folder_macos() -> str | None:
     script = (
         'tell application "System Events" to activate\n'
         'set chosen to POSIX path of (choose folder with prompt "Choose a folder to index")\n'
-        'return chosen'
+        "return chosen"
     )
     try:
         result = subprocess.run(
@@ -55,7 +56,12 @@ def _pick_folder_linux() -> str | None:
         return None
     try:
         result = subprocess.run(
-            ["zenity", "--file-selection", "--directory", "--title=Choose a folder to index"],
+            [
+                "zenity",
+                "--file-selection",
+                "--directory",
+                "--title=Choose a folder to index",
+            ],
             capture_output=True,
             text=True,
             timeout=300,

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Trash2, Loader2, AlertCircle, Mic, Volume2, Square, VolumeX } from "lucide-react";
+import { Send, Trash2, Loader2, AlertCircle, Mic, Volume2, Square, VolumeX, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ChatMessage, AskSource } from "@/types";
 
@@ -25,6 +25,7 @@ export default function AskPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState<{ stt: boolean; tts: boolean }>({ stt: false, tts: false });
+  const [ollamaOffline, setOllamaOffline] = useState(false);
   const [ttsStates, setTtsStates] = useState<Record<string, TtsState>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -50,6 +51,21 @@ export default function AskPage() {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       audioRef.current?.pause();
     };
+  }, []);
+
+  // Poll health to detect Ollama status
+  useEffect(() => {
+    async function checkOllama() {
+      try {
+        const data = await api.checkHealth() as { ollama: string };
+        setOllamaOffline(data.ollama !== "ok");
+      } catch {
+        setOllamaOffline(true);
+      }
+    }
+    checkOllama();
+    const interval = setInterval(checkOllama, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const askQuestion = async (question: string) => {
@@ -283,6 +299,24 @@ export default function AskPage() {
           </Button>
         )}
       </div>
+
+      {/* Ollama offline warning */}
+      {ollamaOffline && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm"
+          style={{
+            background: "#FFFBEB",
+            color: "#92400E",
+            border: "1px solid #FDE68A",
+            fontFamily: "var(--font-sans)",
+          }}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: "#D97706" }} />
+          <span>
+            Ollama is not running. Start it with <code style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>ollama serve</code> to enable Ask.
+          </span>
+        </div>
+      )}
 
       {/* Chat area */}
       <ScrollArea className="flex-1 pr-4" ref={scrollRef}>

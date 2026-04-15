@@ -11,6 +11,7 @@ console = Console()
 
 try:
     import openpyxl
+
     _openpyxl_available = True
 except ImportError:
     _openpyxl_available = False
@@ -38,7 +39,7 @@ class SpreadsheetExtractor(LocalLensExtractor):
         """Extract CSV/TSV as key-value text lines."""
         try:
             delimiter = "\t" if ext == ".tsv" else ","
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 reader = csv.reader(f, delimiter=delimiter)
                 rows = list(reader)
 
@@ -58,13 +59,17 @@ class SpreadsheetExtractor(LocalLensExtractor):
 
             return "\n".join(lines)
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract CSV {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract CSV {file_path}: {exc}[/yellow]"
+            )
             return ""
 
     def _extract_xlsx(self, file_path: Path) -> str:
         """Extract XLSX sheets as key-value text lines."""
         if not _openpyxl_available:
-            console.print(f"[yellow]Warning: openpyxl not installed. Cannot extract {file_path}[/yellow]")
+            console.print(
+                f"[yellow]Warning: openpyxl not installed. Cannot extract {file_path}[/yellow]"
+            )
             return ""
         try:
             wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
@@ -74,7 +79,10 @@ class SpreadsheetExtractor(LocalLensExtractor):
                 rows = list(ws.iter_rows(values_only=True))
                 if not rows:
                     continue
-                headers = [str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
+                headers = [
+                    str(h) if h is not None else f"col_{i}"
+                    for i, h in enumerate(rows[0])
+                ]
                 lines = [f"Sheet: {sheet_name}"]
                 for row in rows[1:]:
                     pairs = []
@@ -89,5 +97,7 @@ class SpreadsheetExtractor(LocalLensExtractor):
             wb.close()
             return "\n\n".join(blocks)
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract XLSX {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract XLSX {file_path}: {exc}[/yellow]"
+            )
             return ""

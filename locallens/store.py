@@ -37,7 +37,7 @@ from qdrant_edge import (
     UpdateOperation,
 )
 
-from locallens.config import COLLECTION_NAME, QDRANT_PATH, VECTOR_NAME, VECTOR_SIZE
+from locallens.config import QDRANT_PATH, VECTOR_NAME, VECTOR_SIZE
 
 # Indexed payload fields — keyword index on each enables O(1) filtered
 # count/search (the whole point of the Phase 2 migration).
@@ -197,7 +197,9 @@ def has_hash(file_hash: str) -> bool:
         CountRequest(
             exact=True,
             filter=Filter(
-                must=[FieldCondition(key="file_hash", match=MatchValue(value=file_hash))]
+                must=[
+                    FieldCondition(key="file_hash", match=MatchValue(value=file_hash))
+                ]
             ),
         )
     )
@@ -210,7 +212,9 @@ def delete_by_file(file_path: str) -> None:
     shard.update(
         UpdateOperation.delete_points_by_filter(
             Filter(
-                must=[FieldCondition(key="file_path", match=MatchValue(value=file_path))]
+                must=[
+                    FieldCondition(key="file_path", match=MatchValue(value=file_path))
+                ]
             )
         )
     )
@@ -270,7 +274,9 @@ def facet_file_types(limit: int = 20) -> list[tuple[str, int]]:
     offset = None
     while True:
         points, next_offset = shard.scroll(
-            ScrollRequest(limit=256, offset=offset, with_payload=True, with_vector=False)
+            ScrollRequest(
+                limit=256, offset=offset, with_payload=True, with_vector=False
+            )
         )
         for point in points:
             if point.payload and "file_type" in point.payload:
@@ -298,7 +304,9 @@ def get_all_hashes() -> set[str]:
     offset = None
     while True:
         points, next_offset = shard.scroll(
-            ScrollRequest(limit=256, offset=offset, with_payload=True, with_vector=False)
+            ScrollRequest(
+                limit=256, offset=offset, with_payload=True, with_vector=False
+            )
         )
         for point in points:
             if point.payload and "file_hash" in point.payload:
@@ -321,7 +329,9 @@ def _build_filter(
         # Edge supports MatchText for substring/prefix matching — keep it simple
         # with an exact file_path match for now. Full prefix support will need
         # MatchText or Text index on file_path; deferred.
-        must.append(FieldCondition(key="file_path", match=MatchValue(value=path_prefix)))
+        must.append(
+            FieldCondition(key="file_path", match=MatchValue(value=path_prefix))
+        )
     if not must:
         return None
     return Filter(must=must)

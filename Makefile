@@ -1,4 +1,4 @@
-.PHONY: setup dev stop test
+.PHONY: setup dev stop test test-quick lint clean
 
 VENV := .venv
 UVICORN := $(VENV)/bin/uvicorn
@@ -23,3 +23,26 @@ test:
 	docker compose up -d qdrant
 	pip install -e ".[test]" --quiet
 	pytest tests/ -v --tb=short
+
+test-quick:
+	docker compose up -d qdrant
+	pip install -e ".[test]" --quiet
+	pytest tests/ -v --tb=short -m "not slow"
+
+lint:
+	@command -v ruff >/dev/null 2>&1 && ruff check . || echo "ruff not installed, skipping lint"
+
+clean:
+	@echo "Removing caches and build artifacts..."
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf .pytest_cache
+	rm -rf dist build
+	@if [ -d data/qdrant ]; then \
+		printf "Remove data/qdrant? [y/N] "; \
+		read ans; \
+		if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
+			rm -rf data/qdrant; \
+			echo "Removed data/qdrant"; \
+		fi; \
+	fi

@@ -4,11 +4,11 @@ import logging
 from pathlib import Path
 from typing import Protocol
 
-from app.extractors.text import TextExtractor
-from app.extractors.pdf import PdfExtractor
-from app.extractors.docx_ext import DocxExtractor
 from app.extractors.code import CodeExtractor
+from app.extractors.docx_ext import DocxExtractor
+from app.extractors.pdf import PdfExtractor
 from app.extractors.spreadsheet import SpreadsheetExtractor
+from app.extractors.text import TextExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ try:
     # .msg support depends on oletools being installed
     try:
         from oletools import oleobj  # noqa: F401
+
         _REGISTRY[".msg"] = _email_ext
     except ImportError:
         pass

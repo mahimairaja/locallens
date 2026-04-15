@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from oletools import oleobj  # noqa: F401 — probe import
+
     _oletools_available = True
 except ImportError:
     _oletools_available = False
@@ -67,7 +68,9 @@ class EmailExtractor:
 
     def _extract_msg(self, file_path: Path) -> str:
         if not _oletools_available:
-            logger.warning("python-oletools not installed, cannot extract %s", file_path)
+            logger.warning(
+                "python-oletools not installed, cannot extract %s", file_path
+            )
             return ""
         try:
             import extract_msg
@@ -91,11 +94,23 @@ class EmailExtractor:
                 sender = ""
                 body = ""
                 if ole.exists("__substg1.0_0037001F"):
-                    subject = ole.openstream("__substg1.0_0037001F").read().decode("utf-16-le", errors="replace")
+                    subject = (
+                        ole.openstream("__substg1.0_0037001F")
+                        .read()
+                        .decode("utf-16-le", errors="replace")
+                    )
                 if ole.exists("__substg1.0_0C1A001F"):
-                    sender = ole.openstream("__substg1.0_0C1A001F").read().decode("utf-16-le", errors="replace")
+                    sender = (
+                        ole.openstream("__substg1.0_0C1A001F")
+                        .read()
+                        .decode("utf-16-le", errors="replace")
+                    )
                 if ole.exists("__substg1.0_1000001F"):
-                    body = ole.openstream("__substg1.0_1000001F").read().decode("utf-16-le", errors="replace")
+                    body = (
+                        ole.openstream("__substg1.0_1000001F")
+                        .read()
+                        .decode("utf-16-le", errors="replace")
+                    )
                 ole.close()
 
                 header = f"Subject: {subject} / From: {sender}"

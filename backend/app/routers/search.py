@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query as QueryParam
+from fastapi import APIRouter, Depends
+from fastapi import Query as QueryParam
+
 from app.auth import check_namespace_access, require_auth
 from app.config import collection_for_namespace
 from app.models import SearchRequest, SearchResponse
@@ -9,6 +11,7 @@ router = APIRouter()
 
 # In-memory recent searches (last 20)
 _recent_searches: list[str] = []
+
 
 @router.post("/search", response_model=SearchResponse)
 async def do_search(
@@ -34,6 +37,7 @@ async def do_search(
         _recent_searches.pop()
     audit.log("search", namespace=namespace, api_key=api_key, detail=req.query)
     return result
+
 
 @router.get("/search/recent")
 async def recent_searches(api_key: str | None = Depends(require_auth)):

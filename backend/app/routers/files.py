@@ -1,9 +1,11 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.auth import check_namespace_access, require_auth
 from app.config import collection_for_namespace
 from app.models import IndexedFile
 from app.services import audit, store
-from pathlib import Path
 
 router = APIRouter()
 
@@ -52,7 +54,10 @@ async def get_file_chunks(
     collection = collection_for_namespace(namespace)
     points = store.scroll_all(collection=collection)
     chunks = [
-        {"chunk_index": p.payload.get("chunk_index", 0), "chunk_text": p.payload.get("chunk_text", "")}
+        {
+            "chunk_index": p.payload.get("chunk_index", 0),
+            "chunk_text": p.payload.get("chunk_text", ""),
+        }
         for p in points
         if p.payload.get("file_path") == file_path
     ]

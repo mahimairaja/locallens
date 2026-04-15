@@ -1,17 +1,13 @@
 """Voice loop: mic -> STT -> intent -> search/ask -> TTS -> speaker."""
 
-import sys
-
 from rich.console import Console
-from rich.spinner import Spinner
-from rich.live import Live
 
 from locallens.config import (
+    DEFAULT_TOP_K,
     KOKORO_SPEED,
     KOKORO_VOICE,
-    SAMPLE_RATE,
-    DEFAULT_TOP_K,
     RAG_TOP_K,
+    SAMPLE_RATE,
 )
 
 console = Console()
@@ -66,6 +62,7 @@ def start_voice_loop(store, embed_query_fn) -> None:
 
     # Check Ollama
     import httpx
+
     try:
         resp = httpx.get("http://localhost:11434/api/tags", timeout=5.0)
         resp.raise_for_status()
@@ -97,8 +94,8 @@ def start_voice_loop(store, embed_query_fn) -> None:
 
     console.print("[green]Models loaded. Listening...[/green]\n")
 
-    from locallens.searcher import search as do_search
     from locallens.rag import ask as do_ask
+    from locallens.searcher import search as do_search
 
     try:
         while True:
@@ -107,8 +104,6 @@ def start_voice_loop(store, embed_query_fn) -> None:
                 console.print("[dim]Listening... (speak now)[/dim]")
                 audio_chunks: list[np.ndarray] = []
                 silence_frames = 0
-                is_speaking = False
-                max_silence = int(SAMPLE_RATE * 1.5)  # 1.5s silence to stop
                 max_record = int(SAMPLE_RATE * 30)  # 30s max
 
                 def callback(indata, frames, time_info, status):
@@ -122,6 +117,7 @@ def start_voice_loop(store, embed_query_fn) -> None:
                     callback=callback,
                 ):
                     import time
+
                     total_frames = 0
                     while total_frames < max_record:
                         time.sleep(0.1)
@@ -137,7 +133,6 @@ def start_voice_loop(store, embed_query_fn) -> None:
                                         break
                                 else:
                                     silence_frames = 0
-                                    is_speaking = True
 
                 if not audio_chunks:
                     continue
@@ -194,10 +189,14 @@ def start_voice_loop(store, embed_query_fn) -> None:
             # TTS
             tts_text = response
             if len(tts_text) > 200:
-                tts_text = tts_text[:197] + "... Check the terminal for the full answer."
+                tts_text = (
+                    tts_text[:197] + "... Check the terminal for the full answer."
+                )
 
             try:
-                audio_out, sr = tts_model.create(tts_text, voice=KOKORO_VOICE, speed=KOKORO_SPEED)
+                audio_out, sr = tts_model.create(
+                    tts_text, voice=KOKORO_VOICE, speed=KOKORO_SPEED
+                )
                 sd.play(audio_out, samplerate=sr)
                 sd.wait()
             except Exception as exc:

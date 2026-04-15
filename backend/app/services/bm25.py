@@ -8,7 +8,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 from rank_bm25 import BM25Okapi
 
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 _BM25_PATH = Path("data/bm25_index.json")
 
-_bm25: Optional[BM25Okapi] = None
+_bm25: BM25Okapi | None = None
 _doc_ids: list[str] = []
 _corpus_texts: list[str] = []
 
@@ -66,7 +65,9 @@ def remove_documents(doc_ids: list[str]) -> None:
     global _bm25, _doc_ids, _corpus_texts
 
     id_set = set(doc_ids)
-    pairs = [(did, txt) for did, txt in zip(_doc_ids, _corpus_texts) if did not in id_set]
+    pairs = [
+        (did, txt) for did, txt in zip(_doc_ids, _corpus_texts) if did not in id_set
+    ]
     if pairs:
         _doc_ids, _corpus_texts = map(list, zip(*pairs))
     else:

@@ -3,8 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 
 class TestEmailExtractor:
     """Test the EmailExtractor on .eml files."""
@@ -16,7 +14,9 @@ class TestEmailExtractor:
         assert ".eml" in ext.supported_extensions()
 
         # Write a test .eml
-        with tempfile.NamedTemporaryFile(suffix=".eml", mode="w", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".eml", mode="w", delete=False, encoding="utf-8"
+        ) as f:
             f.write(
                 "From: sender@test.com\r\n"
                 "To: receiver@test.com\r\n"

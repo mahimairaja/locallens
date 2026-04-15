@@ -19,7 +19,9 @@ _tts_available = False
 
 # Model hosted on HuggingFace rhasspy/piper-voices
 _VOICE_NAME = "en_US-lessac-medium"
-_HF_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium"
+_HF_BASE = (
+    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium"
+)
 _CACHE_DIR = Path(os.path.expanduser("~/.cache/locallens/piper"))
 
 

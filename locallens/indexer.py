@@ -3,12 +3,19 @@
 import hashlib
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
+from locallens import bm25, store
 from locallens.chunker import chunk_text
 from locallens.config import (
     CHUNK_OVERLAP,
@@ -20,7 +27,6 @@ from locallens.config import (
 )
 from locallens.embedder import embed_texts
 from locallens.extractors import get_extractor
-from locallens import bm25, store
 
 console = Console()
 
@@ -58,13 +64,15 @@ def _page_for_offset(char_offset: int, page_offsets: list[int]) -> int:
 
 
 def _assign_page_numbers(
-    text: str, chunks: list[str], page_offsets: list[int] | None,
+    text: str,
+    chunks: list[str],
+    page_offsets: list[int] | None,
 ) -> list[int | None]:
     """Map each chunk to its approximate page number."""
     if not page_offsets:
         return [None] * len(chunks)
 
-    result = []
+    result: list[int | None] = []
     search_start = 0
     for chunk in chunks:
         idx = text.find(chunk[:80], search_start)
@@ -93,7 +101,9 @@ def index_folder(folder: Path, force: bool = False) -> None:
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
         if file_path.stat().st_size > MAX_FILE_SIZE_MB * 1024 * 1024:
-            console.print(f"[yellow]Skipping (>{MAX_FILE_SIZE_MB}MB): {file_path}[/yellow]")
+            console.print(
+                f"[yellow]Skipping (>{MAX_FILE_SIZE_MB}MB): {file_path}[/yellow]"
+            )
             continue
         all_files.append(file_path)
 
@@ -122,11 +132,15 @@ def index_folder(folder: Path, force: bool = False) -> None:
             try:
                 fhash = _file_hash(file_path)
             except PermissionError:
-                console.print(f"[yellow]Warning: Permission denied: {file_path}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Permission denied: {file_path}[/yellow]"
+                )
                 progress.advance(task)
                 continue
             except Exception as exc:
-                console.print(f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
+                )
                 progress.advance(task)
                 continue
 
@@ -143,7 +157,10 @@ def index_folder(folder: Path, force: bool = False) -> None:
 
             # Extract text, with page tracking for PDFs
             page_offsets = None
-            if hasattr(extractor, "extract_with_pages") and file_path.suffix.lower() == ".pdf":
+            if (
+                hasattr(extractor, "extract_with_pages")
+                and file_path.suffix.lower() == ".pdf"
+            ):
                 text, page_offsets = extractor.extract_with_pages(file_path)
             else:
                 text = extractor.extract(file_path)
@@ -154,19 +171,21 @@ def index_folder(folder: Path, force: bool = False) -> None:
 
             extractor_name = getattr(extractor, "extractor_name", "unknown")
 
-            chunks = chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP, file_type=file_path.suffix.lower())
+            chunks = chunk_text(
+                text, CHUNK_SIZE, CHUNK_OVERLAP, file_type=file_path.suffix.lower()
+            )
             if not chunks:
                 progress.advance(task)
                 continue
 
             page_numbers = _assign_page_numbers(text, chunks, page_offsets)
             embeddings = embed_texts(chunks)
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             abs_path = str(file_path.resolve())
 
             try:
                 file_mtime = datetime.fromtimestamp(
-                    file_path.stat().st_mtime, tz=timezone.utc
+                    file_path.stat().st_mtime, tz=UTC
                 ).isoformat()
             except OSError:
                 file_mtime = None
@@ -188,14 +207,18 @@ def index_folder(folder: Path, force: bool = False) -> None:
                         "file_modified_at": file_mtime,
                     },
                 }
-                for i, (chunk, emb, pn) in enumerate(zip(chunks, embeddings, page_numbers))
+                for i, (chunk, emb, pn) in enumerate(
+                    zip(chunks, embeddings, page_numbers)
+                )
             ]
 
             store.upsert_batch(points)
-            bm25.add_documents([
-                {"id": _point_id(abs_path, i), "chunk_text": chunk}
-                for i, chunk in enumerate(chunks)
-            ])
+            bm25.add_documents(
+                [
+                    {"id": _point_id(abs_path, i), "chunk_text": chunk}
+                    for i, chunk in enumerate(chunks)
+                ]
+            )
             if sync_queue is not None:
                 sync_queue.extend(points)
             indexed_files += 1
@@ -215,8 +238,6 @@ def index_folder(folder: Path, force: bool = False) -> None:
 
         try:
             pushed = _sync.push(sync_queue)
-            console.print(
-                f"[cyan]Synced {pushed} points to {QDRANT_SYNC_URL}[/cyan]"
-            )
+            console.print(f"[cyan]Synced {pushed} points to {QDRANT_SYNC_URL}[/cyan]")
         except Exception as exc:
             console.print(f"[yellow]Sync failed: {exc}[/yellow]")

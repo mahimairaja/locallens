@@ -11,6 +11,7 @@ console = Console()
 try:
     import ebooklib  # noqa: F401
     from ebooklib import epub as _epub_mod  # noqa: F401
+
     _ebooklib_available = True
 except ImportError:
     _ebooklib_available = False
@@ -34,9 +35,10 @@ class EpubExtractor(LocalLensExtractor):
             )
             return ""
         try:
-            from ebooklib import epub, ITEM_DOCUMENT
-            from html.parser import HTMLParser
             import io
+            from html.parser import HTMLParser
+
+            from ebooklib import ITEM_DOCUMENT, epub
 
             book = epub.read_epub(str(file_path), options={"ignore_ncx": True})
 
@@ -66,10 +68,14 @@ class EpubExtractor(LocalLensExtractor):
                 text = parser.get_text().strip()
                 if text:
                     # Use the item file name as a chapter title hint
-                    chapter_title = Path(item.get_name()).stem.replace("_", " ").replace("-", " ")
+                    chapter_title = (
+                        Path(item.get_name()).stem.replace("_", " ").replace("-", " ")
+                    )
                     sections.append(f"## {chapter_title}\n\n{text}")
 
             return "\n\n".join(sections)
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract EPUB {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract EPUB {file_path}: {exc}[/yellow]"
+            )
             return ""

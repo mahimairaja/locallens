@@ -5,9 +5,11 @@ available.
 """
 
 import pytest
-import httpx
+
+from tests.conftest import TEST_COLLECTION
 
 
+@pytest.mark.slow
 class TestAsk:
     """Test the RAG ask pipeline via the backend."""
 
@@ -18,6 +20,8 @@ class TestAsk:
         avoid needing the full FastAPI server running. It builds a minimal
         context from the test collection and streams a response.
         """
+        import httpx
+
         # Check Ollama is reachable
         try:
             resp = httpx.get("http://localhost:11434/api/tags", timeout=5)
@@ -31,7 +35,7 @@ class TestAsk:
         vector = embedder.encode(query).tolist()
 
         results = qdrant_client.query_points(
-            collection_name="locallens_test",
+            collection_name=TEST_COLLECTION,
             query=vector,
             using="text",
             limit=3,
@@ -39,7 +43,7 @@ class TestAsk:
         )
 
         if not results.points:
-            pytest.skip("No points in test collection — run index tests first")
+            pytest.skip("No points in test collection -- run index tests first")
 
         context_parts = []
         for p in results.points:
@@ -59,6 +63,8 @@ class TestAsk:
         prompt = f"Context:\n{context}\n\nQuestion: {query}"
 
         # Stream response from Ollama
+        import json
+
         response_text = ""
         try:
             with httpx.stream(
@@ -74,8 +80,6 @@ class TestAsk:
             ) as resp:
                 for line in resp.iter_lines():
                     if line:
-                        import json
-
                         data = json.loads(line)
                         token = data.get("response", "")
                         response_text += token

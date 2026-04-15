@@ -10,12 +10,16 @@ import logging
 
 from rich.console import Console
 
-from locallens.extractors.base import LocalLensExtractor, BaseExtractor, discover_plugins
-from locallens.extractors.text import TextExtractor
-from locallens.extractors.pdf import PdfExtractor
-from locallens.extractors.docx_ext import DocxExtractor
+from locallens.extractors.base import (
+    BaseExtractor,
+    LocalLensExtractor,
+    discover_plugins,
+)
 from locallens.extractors.code import CodeExtractor
+from locallens.extractors.docx_ext import DocxExtractor
+from locallens.extractors.pdf import PdfExtractor
 from locallens.extractors.spreadsheet import SpreadsheetExtractor
+from locallens.extractors.text import TextExtractor
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -74,13 +78,18 @@ except ImportError:
 
 # --- 1. LiteParse (highest priority among built-ins when installed) ---
 try:
-    from locallens.extractors.liteparse_ext import LiteParseExtractor, liteparse_available
+    from locallens.extractors.liteparse_ext import (
+        LiteParseExtractor,
+        liteparse_available,
+    )
 
     if liteparse_available:
         _lp = LiteParseExtractor()
         for _ext in _lp.supported_extensions():
             _REGISTRY[_ext] = _lp
-        console.print("[dim]LiteParse available — using it for PDF, DOCX, PPTX, XLSX, HTML[/dim]")
+        console.print(
+            "[dim]LiteParse available — using it for PDF, DOCX, PPTX, XLSX, HTML[/dim]"
+        )
 except ImportError:
     pass
 
@@ -92,7 +101,9 @@ if _plugin_extractors:
             logger.info("Plugin extractor %r handling %s", _inst.name(), _ext)
 
 
-def get_extractor(extension: str, file_path=None) -> LocalLensExtractor | BaseExtractor | None:
+def get_extractor(
+    extension: str, file_path=None
+) -> LocalLensExtractor | BaseExtractor | None:
     """Return the appropriate extractor for the given file extension, or None.
 
     For .md files, checks whether the file is inside an Obsidian vault and

@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 try:
     import pytesseract
     from PIL import Image
+
     _ocr_available = True
 except ImportError:
     _ocr_available = False

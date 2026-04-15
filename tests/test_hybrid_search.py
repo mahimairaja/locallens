@@ -1,19 +1,12 @@
 """Integration tests for hybrid search (semantic + BM25 keyword via RRF)."""
 
-import hashlib
 import uuid
-from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
 from tests.conftest import TEST_COLLECTION
 
 UUID_NAMESPACE = uuid.UUID("d1b4c5e8-7f3a-4e2b-9a1c-6d8e0f2b3c4a")
-
-
-def _point_id(file_path: str, chunk_index: int) -> str:
-    return str(uuid.uuid5(UUID_NAMESPACE, f"{file_path}:{chunk_index}"))
 
 
 class TestHybridSearch:

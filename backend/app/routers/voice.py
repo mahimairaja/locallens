@@ -1,19 +1,23 @@
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+
 from app.auth import check_namespace_access, require_auth
 from app.config import collection_for_namespace
-from app.models import TranscribeResponse, SynthesizeRequest
+from app.models import SynthesizeRequest, TranscribeResponse
 from app.services import voice_stt, voice_tts
 from app.services.rag import stream_answer
-import json
 
 router = APIRouter()
 
 
 @router.post("/voice/transcribe", response_model=TranscribeResponse)
-async def transcribe(file: UploadFile = File(...), api_key: str | None = Depends(require_auth)):
+async def transcribe(
+    file: UploadFile = File(...), api_key: str | None = Depends(require_auth)
+):
     if not voice_stt.is_available():
-        raise HTTPException(501, "STT not available. Install: pip install 'locallens[voice]'")
+        raise HTTPException(
+            501, "STT not available. Install: pip install 'locallens[voice]'"
+        )
 
     audio_bytes = await file.read()
     text, duration_ms = voice_stt.transcribe(audio_bytes)
@@ -21,9 +25,13 @@ async def transcribe(file: UploadFile = File(...), api_key: str | None = Depends
 
 
 @router.post("/voice/synthesize")
-async def synthesize(req: SynthesizeRequest, api_key: str | None = Depends(require_auth)):
+async def synthesize(
+    req: SynthesizeRequest, api_key: str | None = Depends(require_auth)
+):
     if not voice_tts.is_available():
-        raise HTTPException(501, "TTS not available. Install: pip install 'locallens[voice]'")
+        raise HTTPException(
+            501, "TTS not available. Install: pip install 'locallens[voice]'"
+        )
 
     wav_bytes = voice_tts.synthesize(req.text)
     return Response(content=wav_bytes, media_type="audio/wav")
@@ -36,7 +44,9 @@ async def voice_conversation(
     api_key: str | None = Depends(require_auth),
 ):
     if not voice_stt.is_available():
-        raise HTTPException(501, "STT not available. Install: pip install 'locallens[voice]'")
+        raise HTTPException(
+            501, "STT not available. Install: pip install 'locallens[voice]'"
+        )
 
     check_namespace_access(api_key, namespace)
     collection = collection_for_namespace(namespace)
@@ -66,6 +76,7 @@ async def voice_conversation(
     audio_base64 = None
     if voice_tts.is_available():
         import base64
+
         wav_bytes = voice_tts.synthesize(response_text[:500])  # Limit TTS length
         audio_base64 = base64.b64encode(wav_bytes).decode()
 

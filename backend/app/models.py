@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class IndexRequest(BaseModel):
@@ -10,12 +10,12 @@ class IndexRequest(BaseModel):
 
 class IndexProgress(BaseModel):
     status: str  # "scanning" | "indexing" | "done" | "error"
-    current_file: Optional[str] = None
+    current_file: str | None = None
     files_processed: int = 0
     files_total: int = 0
     chunks_created: int = 0
     elapsed_seconds: float = 0
-    error: Optional[str] = None
+    error: str | None = None
     files_new: int = 0
     files_updated: int = 0
     files_skipped: int = 0
@@ -24,11 +24,11 @@ class IndexProgress(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 10
-    file_type: Optional[str] = None
-    path_prefix: Optional[str] = None
+    file_type: str | None = None
+    path_prefix: str | None = None
     mode: str = "hybrid"
-    date_from: Optional[str] = None
-    date_to: Optional[str] = None
+    date_from: str | None = None
+    date_to: str | None = None
 
 
 class SearchResult(BaseModel):
@@ -39,8 +39,8 @@ class SearchResult(BaseModel):
     file_type: str
     chunk_text: str
     chunk_index: int
-    extractor: Optional[str] = None
-    page_number: Optional[int] = None
+    extractor: str | None = None
+    page_number: int | None = None
 
 
 class SearchResponse(BaseModel):
@@ -65,7 +65,7 @@ class IndexedFile(BaseModel):
     file_name: str
     file_type: str
     chunk_count: int
-    indexed_at: Optional[datetime] = None
+    indexed_at: datetime | None = None
 
 
 class StatsResponse(BaseModel):
@@ -73,7 +73,7 @@ class StatsResponse(BaseModel):
     total_chunks: int
     file_types: dict[str, int]
     storage_size_mb: float
-    last_indexed_at: Optional[datetime] = None
+    last_indexed_at: datetime | None = None
     top_searches: list[str]
 
 

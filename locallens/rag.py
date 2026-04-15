@@ -1,6 +1,6 @@
 """RAG module: retrieve chunks, build prompt, stream response from Ollama."""
 
-from typing import Generator
+from collections.abc import Generator
 
 import httpx
 from rich.console import Console
@@ -69,6 +69,7 @@ def ask(question: str, store, top_k: int = RAG_TOP_K) -> Generator[str, None, No
                 if not line:
                     continue
                 import json
+
                 data = json.loads(line)
                 token = data.get("response", "")
                 if token:

@@ -1,12 +1,22 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+import asyncio
+import json
+import uuid
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
+
 from app.auth import check_namespace_access, require_auth
 from app.config import collection_for_namespace
-from app.models import IndexRequest, IndexProgress
+from app.models import IndexProgress, IndexRequest
 from app.services import audit
 from app.services.indexer import index_folder
-import asyncio
-import uuid
-import json
 
 router = APIRouter()
 
@@ -35,10 +45,14 @@ async def start_index(
             _notify_subscribers(task_id, p)
 
         try:
-            result = index_folder(req.folder_path, req.force, on_progress, collection=collection)
+            result = index_folder(
+                req.folder_path, req.force, on_progress, collection=collection
+            )
             _tasks[task_id] = result
             _notify_subscribers(task_id, result)
-            audit.log("index", namespace=namespace, api_key=api_key, detail=req.folder_path)
+            audit.log(
+                "index", namespace=namespace, api_key=api_key, detail=req.folder_path
+            )
         except Exception as e:
             error_progress = IndexProgress(status="error", error=str(e))
             _tasks[task_id] = error_progress
@@ -83,7 +97,7 @@ async def index_progress_ws(websocket: WebSocket, task_id: str):
         while True:
             try:
                 await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
 
             current = _tasks.get(task_id)

@@ -1,11 +1,13 @@
+import json
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+
 from app.auth import check_namespace_access, require_auth
 from app.config import collection_for_namespace
 from app.models import AskRequest
 from app.services import audit
 from app.services.rag import stream_answer
-import json
 
 router = APIRouter()
 
@@ -20,12 +22,14 @@ async def ask(
     collection = collection_for_namespace(namespace)
 
     def event_stream():
-        for token, sources in stream_answer(req.question, req.top_k, collection=collection):
+        for token, sources in stream_answer(
+            req.question, req.top_k, collection=collection
+        ):
             if token is not None:
                 yield f"event: token\ndata: {json.dumps({'text': token})}\n\n"
             if sources is not None:
                 yield f"event: sources\ndata: {json.dumps({'sources': [s.model_dump() for s in sources]})}\n\n"
-        yield f"event: done\ndata: {{}}\n\n"
+        yield "event: done\ndata: {}\n\n"
 
     audit.log("ask", namespace=namespace, api_key=api_key, detail=req.question)
 

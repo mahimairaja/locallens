@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import openpyxl
+
     _openpyxl_available = True
 except ImportError:
     _openpyxl_available = False
@@ -31,7 +32,7 @@ class SpreadsheetExtractor:
         """Extract CSV/TSV as key-value text lines."""
         try:
             delimiter = "\t" if ext == ".tsv" else ","
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 reader = csv.reader(f, delimiter=delimiter)
                 rows = list(reader)
 
@@ -67,7 +68,10 @@ class SpreadsheetExtractor:
                 rows = list(ws.iter_rows(values_only=True))
                 if not rows:
                     continue
-                headers = [str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
+                headers = [
+                    str(h) if h is not None else f"col_{i}"
+                    for i, h in enumerate(rows[0])
+                ]
                 lines = [f"Sheet: {sheet_name}"]
                 for row in rows[1:]:
                     pairs = []

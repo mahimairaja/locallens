@@ -1,8 +1,7 @@
 """Integration tests for namespace isolation."""
 
-import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -49,7 +48,7 @@ class TestNamespaceIsolation:
                         "chunk_index": 0,
                         "chunk_text": text,
                         "file_hash": "abc123",
-                        "indexed_at": datetime.now(timezone.utc).isoformat(),
+                        "indexed_at": datetime.now(UTC).isoformat(),
                     },
                 )
             ],

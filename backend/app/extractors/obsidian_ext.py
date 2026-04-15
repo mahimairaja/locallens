@@ -32,6 +32,7 @@ def _resolve_wikilinks(text: str) -> str:
         if display:
             return display
         return m.group(1)
+
     return _WIKILINK_RE.sub(_replace, text)
 
 

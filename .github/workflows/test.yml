@@ -23,12 +23,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -e ".[test]"
+          pip install -r backend/requirements.txt
 
       - name: Wait for Qdrant to be ready
         run: |
@@ -38,7 +39,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests
+      - name: Run tests (skip slow / Ollama-dependent)
         env:
           QDRANT_TEST_URL: http://localhost:6333
-        run: pytest tests/ -v --tb=short
+        run: make test-quick

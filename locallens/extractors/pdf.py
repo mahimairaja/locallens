@@ -11,6 +11,7 @@ console = Console()
 try:
     import pytesseract
     from PIL import Image
+
     _ocr_available = True
 except ImportError:
     _ocr_available = False
@@ -45,7 +46,9 @@ class PdfExtractor(LocalLensExtractor):
 
             return text
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract PDF {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract PDF {file_path}: {exc}[/yellow]"
+            )
             return ""
 
     # Keep extractor_name as a dynamic property for legacy compat
@@ -80,7 +83,9 @@ class PdfExtractor(LocalLensExtractor):
 
             return full_text, offsets
         except Exception as exc:
-            console.print(f"[yellow]Warning: Could not extract PDF {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: Could not extract PDF {file_path}: {exc}[/yellow]"
+            )
             return "", []
 
     def _needs_ocr(self, text: str, num_pages: int) -> bool:
@@ -113,5 +118,7 @@ class PdfExtractor(LocalLensExtractor):
             doc.close()
             return pages
         except Exception as exc:
-            console.print(f"[yellow]Warning: OCR failed for {file_path}: {exc}[/yellow]")
+            console.print(
+                f"[yellow]Warning: OCR failed for {file_path}: {exc}[/yellow]"
+            )
             return []

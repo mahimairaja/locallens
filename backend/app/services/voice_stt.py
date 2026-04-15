@@ -24,7 +24,7 @@ def is_available() -> bool:
 def load_model():
     global _stt_model, _stt_available
     try:
-        from moonshine_voice import Transcriber, ModelArch, get_model_path
+        from moonshine_voice import ModelArch, Transcriber, get_model_path
 
         model_path = get_model_path("tiny-en")
         if not model_path.exists():
@@ -59,9 +59,17 @@ def _decode_to_pcm_floats(audio_bytes: bytes, target_rate: int = 16000) -> list[
     proc = subprocess.run(
         [
             "ffmpeg",
-            "-hide_banner", "-loglevel", "error",
-            "-i", "pipe:0",
-            "-f", "s16le", "-ac", "1", "-ar", str(target_rate),
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            "pipe:0",
+            "-f",
+            "s16le",
+            "-ac",
+            "1",
+            "-ar",
+            str(target_rate),
             "pipe:1",
         ],
         input=audio_bytes,
@@ -79,11 +87,15 @@ def transcribe(audio_bytes: bytes, sample_rate: int = 16000) -> tuple[str, float
 
     start = time.time()
     samples = _decode_to_pcm_floats(audio_bytes, target_rate=sample_rate)
-    transcript = _stt_model.transcribe_without_streaming(samples, sample_rate=sample_rate)
+    transcript = _stt_model.transcribe_without_streaming(
+        samples, sample_rate=sample_rate
+    )
 
     # Transcript object has .lines (list of TranscriptLine with .text)
     if hasattr(transcript, "lines") and transcript.lines:
-        text = " ".join(line.text for line in transcript.lines if getattr(line, "text", None))
+        text = " ".join(
+            line.text for line in transcript.lines if getattr(line, "text", None)
+        )
     else:
         text = str(transcript)
 

@@ -1,7 +1,7 @@
 """Shared pytest fixtures for LocalLens integration tests.
 
-All tests use a dedicated "locallens_test" Qdrant collection (via the Docker
-Qdrant server at http://localhost:6333) so production data is never touched.
+All tests use a dedicated Qdrant collection with a unique name
+("locallens_test_{uuid4_short}") so production data is never touched.
 The collection is created at session start and destroyed at session end.
 """
 
@@ -9,6 +9,7 @@ import csv
 import os
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 
 import pytest
@@ -16,8 +17,20 @@ import pytest
 # ---------------------------------------------------------------------------
 # Test constants
 # ---------------------------------------------------------------------------
-TEST_COLLECTION = "locallens_test"
+_UUID_SHORT = uuid.uuid4().hex[:8]
+TEST_COLLECTION = f"locallens_test_{_UUID_SHORT}"
 QDRANT_URL = os.environ.get("QDRANT_TEST_URL", "http://localhost:6333")
+
+
+def _ollama_reachable() -> bool:
+    """Return True if Ollama is accepting connections."""
+    try:
+        import httpx
+
+        resp = httpx.get("http://localhost:11434/api/tags", timeout=3)
+        return resp.status_code == 200
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +43,7 @@ def qdrant_client():
     """Return a QdrantClient connected to the test Qdrant instance.
 
     Creates the test collection at the start of the session and deletes it at
-    the end. Skips the entire session if Qdrant is not reachable.
+    the end.  Skips the entire session if Qdrant is not reachable.
     """
     from qdrant_client import QdrantClient
     from qdrant_client.models import Distance, VectorParams
@@ -43,7 +56,7 @@ def qdrant_client():
     except Exception:
         pytest.skip("Qdrant server not reachable at " + QDRANT_URL)
 
-    # Create (or recreate) the test collection
+    # Create the test collection
     collections = [c.name for c in client.get_collections().collections]
     if TEST_COLLECTION in collections:
         client.delete_collection(TEST_COLLECTION)
@@ -82,7 +95,7 @@ def test_folder():
 
     Contains:
       - sample.txt          (plain text with a known phrase)
-      - data.csv            (CSV with column headers)
+      - data.csv            (CSV with column headers and 3 rows)
       - hello.py            (Python source)
       - sample.eml          (RFC 5322 email)
     """
@@ -102,6 +115,7 @@ def test_folder():
         writer.writerow(["Name", "City", "Score"])
         writer.writerow(["Alice", "Portland", "95"])
         writer.writerow(["Bob", "Seattle", "88"])
+        writer.writerow(["Carol", "Denver", "92"])
 
     # -- .py --
     (tmpdir / "hello.py").write_text(
