@@ -20,12 +20,12 @@ stop:
 	pkill -f uvicorn || true
 
 test:
-	docker compose up -d qdrant
+	@curl -sf http://localhost:6333/healthz >/dev/null 2>&1 || docker compose up -d qdrant
 	pip install -e ".[test]" --quiet
 	pytest tests/ -v --tb=short
 
 test-quick:
-	docker compose up -d qdrant
+	@curl -sf http://localhost:6333/healthz >/dev/null 2>&1 || docker compose up -d qdrant
 	pip install -e ".[test]" --quiet
 	pytest tests/ -v --tb=short -m "not slow"
 
