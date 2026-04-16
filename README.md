@@ -4,10 +4,12 @@
 
 **Search your files by talking to them - 100% offline**
 
+![LocalLens CLI Demo](assets/demo-cli.gif)
+
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![Qdrant Edge](https://img.shields.io/badge/Qdrant-Edge-C67B3C)
-![Tests](https://github.com/mahimai/ask-local-files/actions/workflows/test.yml/badge.svg)
+![Tests](https://github.com/mahimairaja/locallens/actions/workflows/test.yml/badge.svg)
 
 ## What It Does
 
