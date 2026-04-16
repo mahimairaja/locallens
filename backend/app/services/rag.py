@@ -9,7 +9,7 @@ from app.services.searcher import search
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a helpful assistant. Answer the question based ONLY on the provided context. If you cannot find the answer in the context, say so. Be concise and accurate."""
+SYSTEM_PROMPT = """You are a helpful assistant answering questions about the user's local files. Use the provided context to answer. The context is excerpts from the user's indexed files — it may include body text, metadata, references, or author info. Synthesize what you can from ALL the context: if body text is limited, infer from titles, section headings, authors, and references what the document is about and share that. Only say you cannot find relevant information if the context is truly unrelated to the question. Be concise and accurate."""
 
 
 def get_rag_context(

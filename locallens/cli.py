@@ -423,11 +423,31 @@ def doctor() -> None:
         )
 
     # 4. Embedding model
-    try:
-        from sentence_transformers import SentenceTransformer
+    import contextlib
+    import io
+    import os
+    import warnings
 
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-        dim = _model.get_sentence_embedding_dimension()
+    try:
+        # Silence the verbose model load report and progress bars.
+        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+        os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+        with (
+            warnings.catch_warnings(),
+            contextlib.redirect_stderr(io.StringIO()),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            warnings.simplefilter("ignore")
+            from sentence_transformers import SentenceTransformer
+
+            _model = SentenceTransformer(EMBEDDING_MODEL)
+            # Method renamed in newer versions; fall back for older installs.
+            get_dim = getattr(
+                _model,
+                "get_embedding_dimension",
+                getattr(_model, "get_sentence_embedding_dimension", lambda: None),
+            )
+            dim = get_dim()
         table.add_row("Embedding Model", PASS, f"{EMBEDDING_MODEL} ({dim}-dim)")
     except ImportError:
         table.add_row("Embedding Model", FAIL, "sentence-transformers not installed")

@@ -1,5 +1,10 @@
 """Sentence-transformer wrapper with lazy loading."""
 
+import contextlib
+import io
+import os
+import warnings
+
 from rich.console import Console
 
 from locallens.config import EMBEDDING_MODEL
@@ -10,13 +15,27 @@ _model = None
 
 
 def _load_model():
-    """Load the sentence-transformer model on first use."""
+    """Load the sentence-transformer model on first use.
+
+    Silences the verbose BertModel LOAD REPORT and tqdm progress bars that
+    sentence-transformers prints to stderr/stdout on first load, so the CLI
+    output stays clean.
+    """
     global _model
     if _model is None:
         console.print("[dim]Loading embedding model (first run only)...[/dim]")
-        from sentence_transformers import SentenceTransformer
+        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+        os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+        os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+        with (
+            warnings.catch_warnings(),
+            contextlib.redirect_stderr(io.StringIO()),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            warnings.simplefilter("ignore")
+            from sentence_transformers import SentenceTransformer
 
-        _model = SentenceTransformer(EMBEDDING_MODEL)
+            _model = SentenceTransformer(EMBEDDING_MODEL)
     return _model
 
 

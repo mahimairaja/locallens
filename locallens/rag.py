@@ -12,8 +12,12 @@ console = Console()
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant answering questions about the user's local files. "
-    "Answer ONLY based on the provided context. If the context doesn't contain "
-    'the answer, say "I couldn\'t find relevant information in your indexed files."'
+    "Use the provided context to answer. The context is excerpts from the user's "
+    "indexed files — it may include body text, metadata, references, or author info. "
+    "Synthesize what you can from ALL the context: if body text is limited, infer "
+    "from titles, section headings, authors, and references what the document is "
+    "about and share that. Only say you cannot find relevant information if the "
+    "context is truly unrelated to the question."
 )
 
 

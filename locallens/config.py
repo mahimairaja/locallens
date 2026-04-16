@@ -64,4 +64,5 @@ KOKORO_SPEED = 1.0
 
 # Search defaults
 DEFAULT_TOP_K = 5
-RAG_TOP_K = 3
+RAG_TOP_K = 8  # Retrieve more chunks for RAG so we capture body content,
+# not just references/metadata at the top of ranked results.
