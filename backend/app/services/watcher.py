@@ -12,12 +12,13 @@ from pathlib import Path
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+from watchdog.observers.api import BaseObserver
 
 logger = logging.getLogger(__name__)
 
 _WATCHED_FILE = Path.home() / ".locallens" / "watched_folders.json"
 
-_observer: Observer | None = None
+_observer: BaseObserver | None = None
 _watched_folders: set[str] = set()
 _event_counts: dict[str, int] = {"created": 0, "modified": 0, "deleted": 0}
 _lock = threading.Lock()

@@ -23,7 +23,9 @@ def _load_model():
     """
     global _model
     if _model is None:
-        console.print("[dim]Loading embedding model (first run only)...[/dim]")
+        import sys
+
+        print("Loading embedding model (first run only)...", file=sys.stderr)
         os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
         os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
         os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")

@@ -40,13 +40,13 @@ def _strip_frontmatter(text: str) -> str:
 def _resolve_wikilinks(text: str) -> str:
     """Replace [[page]] with 'page' and [[page|display]] with 'display'."""
 
-    def _replace(m: re.Match) -> str:
-        display = m.group(2)
+    def _replace(m: re.Match[str]) -> str:
+        display: str = m.group(2) or ""
         if display:
             return display
-        return m.group(1)
+        return str(m.group(1))
 
-    return _WIKILINK_RE.sub(_replace, text)
+    return str(_WIKILINK_RE.sub(_replace, text))
 
 
 class ObsidianExtractor(LocalLensExtractor):

@@ -107,15 +107,32 @@ def index(
     namespace: str = typer.Option(
         "default", "--namespace", help="Namespace to index into."
     ),
+    format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
 ) -> None:
     """Index local files into the vector database for semantic search."""
     if not folder_path.is_dir():
+        if format == "json":
+            import json
+
+            print(json.dumps({"error": f"'{folder_path}' is not a valid directory."}))
+            raise typer.Exit(code=1)
         console.print(f"[red]Error: '{folder_path}' is not a valid directory.[/red]")
         raise typer.Exit(code=1)
 
-    from locallens.indexer import index_folder
+    from locallens import LocalLens
 
-    index_folder(folder_path, force=force)
+    lens = LocalLens(path=str(folder_path))
+    result = lens.index(force=force)
+
+    if format == "json":
+        import json
+
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        console.print(
+            f"\n[green]Indexed {result.total_files} files "
+            f"({result.total_chunks} chunks) in {result.duration_seconds:.1f}s.[/green]"
+        )
 
 
 @app.command()
@@ -135,19 +152,21 @@ def search(
     namespace: str = typer.Option(
         "default", "--namespace", help="Namespace to search."
     ),
+    format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
 ) -> None:
     """Semantic search over your indexed files."""
-    from locallens import store as st
-    from locallens.searcher import search as do_search
+    from locallens import LocalLens
 
-    st.init()
-    if st.count() == 0:
-        console.print(
-            "[yellow]No files indexed yet. Run `locallens index <folder>` first.[/yellow]"
-        )
-        raise typer.Exit()
+    lens = LocalLens()
+    results = lens.search(
+        query, top_k=top_k, file_type=file_type, path_prefix=path_prefix
+    )
 
-    results = do_search(query, top_k, file_type=file_type, path_prefix=path_prefix)
+    if format == "json":
+        import json
+
+        print(json.dumps([r.to_dict() for r in results], indent=2))
+        return
 
     if not results:
         console.print("[yellow]No results found.[/yellow]")
@@ -161,14 +180,14 @@ def search(
     table.add_column("Preview", max_width=60)
 
     for rank, hit in enumerate(results, 1):
-        preview = hit.payload.get("chunk_text", "")[:200]
-        if len(hit.payload.get("chunk_text", "")) > 200:
+        preview = hit.chunk_text[:200]
+        if len(hit.chunk_text) > 200:
             preview += "..."
         table.add_row(
             str(rank),
             f"{hit.score:.2f}",
-            hit.payload.get("file_name", ""),
-            hit.payload.get("file_path", ""),
+            hit.file_name,
+            hit.file_path,
             preview,
         )
 
@@ -182,31 +201,44 @@ def ask(
         RAG_TOP_K, "--top-k", help="Number of chunks to retrieve for context."
     ),
     namespace: str = typer.Option("default", "--namespace", help="Namespace to query."),
+    format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
 ) -> None:
     """Ask a question about your indexed files using RAG."""
-    from locallens import store as st
-    from locallens.rag import ask as do_ask
+    from locallens import LocalLens
+    from locallens.models import OllamaUnavailableError
 
-    st.init()
-    if st.count() == 0:
-        console.print(
-            "[yellow]No files indexed yet. Run `locallens index <folder>` first.[/yellow]"
-        )
-        raise typer.Exit()
+    lens = LocalLens()
 
+    if format == "json":
+        import json
+
+        try:
+            result = lens.ask(question, top_k=top_k)
+            print(json.dumps(result.to_dict(), indent=2))
+        except OllamaUnavailableError as exc:
+            print(json.dumps({"error": str(exc)}))
+            raise typer.Exit(code=1)
+        return
+
+    # Rich streaming mode
     try:
-        for token in do_ask(question, st, top_k=top_k):
-            console.print(token, end="")
+        for event in lens.ask_stream(question, top_k=top_k):
+            if event.event_type == "token":
+                console.print(event.data, end="")
         console.print()
-    except Exception as exc:
-        error_msg = str(exc)
-        if "Connection" in error_msg or "refused" in error_msg:
-            console.print(
-                "\n[red]Error: Ollama is not running. Start it with: ollama serve[/red]"
-                "\n[red]Then pull the model: ollama pull qwen2.5:3b[/red]"
+    except OllamaUnavailableError:
+        console.print(
+            Panel(
+                "[red]Ollama is not running.[/red]\n\n"
+                "Start it with: [bold]ollama serve[/bold]\n"
+                "Pull the model: [bold]ollama pull qwen2.5:3b[/bold]",
+                title="Ollama Unavailable",
+                border_style="red",
             )
-        else:
-            console.print(f"\n[red]Error: {exc}[/red]")
+        )
+        raise typer.Exit(code=1)
+    except Exception as exc:
+        console.print(f"\n[red]Error: {exc}[/red]")
         raise typer.Exit(code=1)
 
 
@@ -321,8 +353,20 @@ def stats(
     namespace: str = typer.Option(
         "default", "--namespace", help="Namespace to show stats for."
     ),
+    format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
 ) -> None:
     """Show statistics about the indexed collection."""
+    from locallens import LocalLens
+
+    lens = LocalLens()
+
+    if format == "json":
+        import json
+
+        result = lens.stats()
+        print(json.dumps(result.to_dict(), indent=2))
+        return
+
     from locallens import store as st
 
     st.init()
@@ -362,8 +406,32 @@ def stats(
 
 
 @app.command()
-def doctor() -> None:
+def doctor(
+    format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
+) -> None:
     """Run health checks on all LocalLens dependencies."""
+    if format == "json":
+        import json
+
+        from locallens import LocalLens
+
+        lens = LocalLens()
+        checks = lens.doctor()
+        critical_ok = all(
+            c.status != "fail"
+            for c in checks
+            if c.name in ("Qdrant Edge", "Embedding Model")
+        )
+        print(
+            json.dumps(
+                {
+                    "checks": [c.to_dict() for c in checks],
+                    "exit_code": 0 if critical_ok else 1,
+                },
+                indent=2,
+            )
+        )
+        raise typer.Exit(code=0 if critical_ok else 1)
     import urllib.error
     import urllib.request
 
@@ -511,3 +579,58 @@ def doctor() -> None:
             )
         )
         raise typer.Exit(code=1)
+
+
+# ── serve command group ──────────────────────────────────────────
+
+serve_app = typer.Typer(
+    name="serve",
+    help="Start LocalLens servers: MCP for AI agents, API for REST, or UI for the dashboard.",
+    no_args_is_help=True,
+)
+app.add_typer(serve_app)
+
+
+@serve_app.callback(invoke_without_command=True)
+def serve_default(
+    ctx: typer.Context,
+    mcp: bool = typer.Option(False, "--mcp", help="Start MCP server for AI agents"),
+    api: bool = typer.Option(False, "--api", help="Start headless REST API server"),
+    ui: bool = typer.Option(
+        False, "--ui", help="Start full web dashboard with React UI"
+    ),
+    port: int = typer.Option(None, "--port", help="Custom port"),
+) -> None:
+    """Start a LocalLens server."""
+    if mcp:
+        try:
+            from locallens.mcp_server import main as mcp_main
+        except ImportError:
+            console.print(
+                "[red]MCP dependencies not installed.[/red]\n"
+                "Install with: [bold]pip install locallens\\[mcp][/bold]"
+            )
+            raise typer.Exit(code=1)
+        mcp_main(port=port or 8811)
+    elif api:
+        try:
+            from locallens.dashboard import start_api
+        except ImportError:
+            console.print(
+                "[red]Server dependencies not installed.[/red]\n"
+                "Install with: [bold]pip install locallens\\[server][/bold]"
+            )
+            raise typer.Exit(code=1)
+        start_api(port=port or 8000)
+    elif ui:
+        try:
+            from locallens.dashboard import start_dashboard
+        except ImportError:
+            console.print(
+                "[red]Server dependencies not installed.[/red]\n"
+                "Install with: [bold]pip install locallens\\[server][/bold]"
+            )
+            raise typer.Exit(code=1)
+        start_dashboard(port=port or 8000, with_ui=True)
+    elif ctx.invoked_subcommand is None:
+        console.print(ctx.get_help())
