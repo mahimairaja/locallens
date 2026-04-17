@@ -102,7 +102,7 @@ def main(port: int = 8811) -> None:
         '  "locallens": {"command": "locallens", "args": ["serve", "--mcp"]}\n',
         file=sys.stderr,
     )
-    mcp.run(transport="sse")
+    mcp.run(transport="sse", port=port)
 
 
 if __name__ == "__main__":

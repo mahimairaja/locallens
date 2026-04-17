@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import shutil
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any
 
@@ -61,7 +61,9 @@ class LocalLens:
         self._ollama_model = ollama_model
 
         self._store_initialized = False
-        self._embedder_loaded = False
+        self._store_module: Any = None
+        self._embed_query_fn: Callable[..., list[float]] | None = None
+        self._embed_texts_fn: Callable[..., list[list[float]]] | None = None
 
     # ── lazy initialization ──────────────────────────────────────────
 
@@ -71,14 +73,25 @@ class LocalLens:
         from locallens import store
 
         store.init()
+        self._store_module = store
         self._store_initialized = True
 
-    def _get_embedder(self):
-        from locallens.embedder import embed_query, embed_texts
+    def _get_store(self) -> Any:
+        self._init_store()
+        return self._store_module
 
-        return embed_query, embed_texts
+    def _get_embedder(
+        self,
+    ) -> tuple[Callable[..., list[float]], Callable[..., list[list[float]]]]:
+        if self._embed_query_fn is None:
+            from locallens.embedder import embed_query, embed_texts
 
-    def _get_bm25(self):
+            self._embed_query_fn = embed_query
+            self._embed_texts_fn = embed_texts
+        assert self._embed_texts_fn is not None
+        return self._embed_query_fn, self._embed_texts_fn
+
+    def _get_bm25(self) -> Any:
         from locallens import bm25
 
         bm25.load()
@@ -86,7 +99,11 @@ class LocalLens:
 
     # ── public API ───────────────────────────────────────────────────
 
-    def index(self, force: bool = False, callback: Any = None) -> IndexResult:
+    def index(
+        self,
+        force: bool = False,
+        callback: Callable[[str, str, float], None] | None = None,
+    ) -> IndexResult:
         """Index files in the configured path.
 
         Args:
@@ -98,20 +115,15 @@ class LocalLens:
             IndexResult with file and chunk counts.
         """
         if self._path is None:
-            raise ValueError(
-                "No path configured. Pass a folder path to LocalLens() or index()."
-            )
+            raise ValueError("No path configured. Pass a folder path to LocalLens().")
 
-        self._init_store()
+        store = self._get_store()
 
         from locallens.indexer import index_folder
 
         start = time.time()
         index_folder(self._path, force=force)
         elapsed = time.time() - start
-
-        # Gather stats after indexing
-        from locallens import store
 
         total_chunks = store.count()
         total_files = store.get_file_count()
@@ -142,28 +154,80 @@ class LocalLens:
         Returns:
             List of SearchResult sorted by relevance.
         """
-        self._init_store()
+        if mode not in ("semantic", "keyword", "hybrid"):
+            raise ValueError(
+                f"Invalid mode '{mode}'. Use 'semantic', 'keyword', or 'hybrid'."
+            )
+
+        store = self._get_store()
         embed_query, _ = self._get_embedder()
 
-        from locallens import store
+        if mode == "keyword":
+            # BM25 keyword-only search
+            bm25 = self._get_bm25()
+            hits = bm25.search(query, top_k)
+            results: list[SearchResult] = []
+            for doc_id, score in hits[:top_k]:
+                # Look up payload from store — best effort
+                try:
+                    points = (
+                        store.get_points([doc_id])
+                        if hasattr(store, "get_points")
+                        else []
+                    )
+                except Exception:
+                    points = []
+                if points:
+                    payload = points[0].payload or {}
+                    if file_type and payload.get("file_type") != file_type:
+                        continue
+                    results.append(self._payload_to_result(payload, score))
+            return results
 
+        # Semantic search (also used as base for hybrid)
         vector = embed_query(query)
-        results = store.search(
-            vector, top_k, file_type=file_type, path_prefix=path_prefix
+        semantic_hits = store.search(
+            vector,
+            top_k if mode == "semantic" else top_k * 2,
+            file_type=file_type,
+            path_prefix=path_prefix,
         )
 
-        return [
-            SearchResult(
-                file_path=hit.payload.get("file_path", ""),
-                file_name=hit.payload.get("file_name", ""),
-                file_type=hit.payload.get("file_type", ""),
-                chunk_text=hit.payload.get("chunk_text", ""),
-                chunk_index=hit.payload.get("chunk_index", 0),
-                score=round(float(hit.score), 4),
-                extractor=hit.payload.get("extractor"),
-            )
-            for hit in results
-        ]
+        if mode == "semantic":
+            return [
+                self._payload_to_result(hit.payload or {}, float(hit.score))
+                for hit in semantic_hits
+            ]
+
+        # Hybrid: combine semantic + BM25 via RRF
+        bm25 = self._get_bm25()
+        bm25_hits = bm25.search(query, top_k * 2)
+
+        if not bm25_hits:
+            return [
+                self._payload_to_result(hit.payload or {}, float(hit.score))
+                for hit in semantic_hits[:top_k]
+            ]
+
+        rrf_k = 60
+        scores: dict[str, float] = {}
+        payloads: dict[str, dict[str, Any]] = {}
+
+        for rank, hit in enumerate(semantic_hits, start=1):
+            pid = str(hit.id)
+            scores[pid] = scores.get(pid, 0) + 1.0 / (rrf_k + rank)
+            payloads[pid] = hit.payload or {}
+
+        for rank, (doc_id, _) in enumerate(bm25_hits, start=1):
+            scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (rrf_k + rank)
+
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        results = []
+        for pid, score in ranked[:top_k]:
+            payload = payloads.get(pid, {})
+            if payload:
+                results.append(self._payload_to_result(payload, score))
+        return results
 
     def ask(self, question: str, top_k: int = 3) -> AskResult:
         """Ask a question about indexed files using RAG.
@@ -190,8 +254,8 @@ class LocalLens:
                     sources = event.data or []
         except OllamaUnavailableError:
             raise
-        except ConnectionError:
-            raise OllamaUnavailableError()
+        except ConnectionError as exc:
+            raise OllamaUnavailableError() from exc
 
         return AskResult(
             answer="".join(tokens),
@@ -211,30 +275,36 @@ class LocalLens:
         Raises:
             OllamaUnavailableError: When Ollama is not running.
         """
-        self._init_store()
+        store = self._get_store()
 
-        from locallens import store
         from locallens.rag import ask as rag_ask
+
+        # Collect source info before streaming
+        embed_query, _ = self._get_embedder()
+        vector = embed_query(question)
+        context_hits = store.search(vector, top_k)
+        sources = [
+            self._payload_to_result(hit.payload or {}, float(hit.score))
+            for hit in context_hits
+        ]
 
         try:
             results_iter = rag_ask(question, store, top_k=top_k)
-        except ConnectionError:
-            raise OllamaUnavailableError()
+        except ConnectionError as exc:
+            raise OllamaUnavailableError() from exc
 
         try:
             for token in results_iter:
                 yield AskStreamEvent(event_type="token", data=token)
-        except ConnectionError:
-            raise OllamaUnavailableError()
+        except ConnectionError as exc:
+            raise OllamaUnavailableError() from exc
+
+        # Emit sources as the final event
+        yield AskStreamEvent(event_type="sources", data=sources)
 
     def stats(self) -> StatsResult:
-        """Get collection statistics.
-
-        Returns:
-            StatsResult with file counts, chunk counts, and type breakdown.
-        """
-        self._init_store()
-        from locallens import store
+        """Get collection statistics."""
+        store = self._get_store()
 
         total_chunks = store.count()
         total_files = store.get_file_count()
@@ -249,13 +319,8 @@ class LocalLens:
         )
 
     def files(self) -> list[FileInfo]:
-        """List all indexed files.
-
-        Returns:
-            List of FileInfo with metadata for each indexed file.
-        """
-        self._init_store()
-        from locallens import store
+        """List all indexed files."""
+        store = self._get_store()
 
         all_points = store.scroll_all() if hasattr(store, "scroll_all") else []
 
@@ -277,14 +342,8 @@ class LocalLens:
         return list(seen.values())
 
     def delete(self, file_path: str) -> bool:
-        """Delete a file and all its chunks from the index.
-
-        Returns:
-            True if the file was found and deleted.
-        """
-        self._init_store()
-        from locallens import store
-
+        """Delete a file and all its chunks from the index."""
+        store = self._get_store()
         try:
             store.delete_by_file(file_path)
             return True
@@ -292,11 +351,7 @@ class LocalLens:
             return False
 
     def doctor(self) -> list[DoctorCheck]:
-        """Run health checks on all dependencies.
-
-        Returns:
-            List of DoctorCheck with status for each component.
-        """
+        """Run health checks on all dependencies."""
         import contextlib
         import io
         import os
@@ -306,9 +361,7 @@ class LocalLens:
 
         # 1. Qdrant Edge
         try:
-            self._init_store()
-            from locallens import store
-
+            store = self._get_store()
             n = store.count()
             checks.append(DoctorCheck("Qdrant Edge", "ok", f"{n} points in shard"))
         except Exception as exc:
@@ -344,7 +397,9 @@ class LocalLens:
                 vec = embed_query("test")
             checks.append(
                 DoctorCheck(
-                    "Embedding Model", "ok", f"{self._embedding_model} ({len(vec)}-dim)"
+                    "Embedding Model",
+                    "ok",
+                    f"{self._embedding_model} ({len(vec)}-dim)",
                 )
             )
         except Exception as exc:
@@ -376,3 +431,17 @@ class LocalLens:
             checks.append(DoctorCheck("Disk Space", "warn", "Could not check"))
 
         return checks
+
+    # ── internal helpers ─────────────────────────────────────────────
+
+    @staticmethod
+    def _payload_to_result(payload: dict[str, Any], score: float) -> SearchResult:
+        return SearchResult(
+            file_path=payload.get("file_path", ""),
+            file_name=payload.get("file_name", ""),
+            file_type=payload.get("file_type", ""),
+            chunk_text=payload.get("chunk_text", ""),
+            chunk_index=payload.get("chunk_index", 0),
+            score=round(score, 4),
+            extractor=payload.get("extractor"),
+        )

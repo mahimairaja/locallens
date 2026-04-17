@@ -603,16 +603,34 @@ def serve_default(
 ) -> None:
     """Start a LocalLens server."""
     if mcp:
-        from locallens.mcp_server import main as mcp_main
-
+        try:
+            from locallens.mcp_server import main as mcp_main
+        except ImportError:
+            console.print(
+                "[red]MCP dependencies not installed.[/red]\n"
+                "Install with: [bold]pip install locallens\\[mcp][/bold]"
+            )
+            raise typer.Exit(code=1)
         mcp_main(port=port or 8811)
     elif api:
-        from locallens.dashboard import start_api
-
+        try:
+            from locallens.dashboard import start_api
+        except ImportError:
+            console.print(
+                "[red]Server dependencies not installed.[/red]\n"
+                "Install with: [bold]pip install locallens\\[server][/bold]"
+            )
+            raise typer.Exit(code=1)
         start_api(port=port or 8000)
     elif ui:
-        from locallens.dashboard import start_dashboard
-
+        try:
+            from locallens.dashboard import start_dashboard
+        except ImportError:
+            console.print(
+                "[red]Server dependencies not installed.[/red]\n"
+                "Install with: [bold]pip install locallens\\[server][/bold]"
+            )
+            raise typer.Exit(code=1)
         start_dashboard(port=port or 8000, with_ui=True)
     elif ctx.invoked_subcommand is None:
         console.print(ctx.get_help())

@@ -6,12 +6,15 @@ import sys
 from pathlib import Path
 
 
-def start_dashboard(port: int = 8000, with_ui: bool = False) -> None:
+def start_dashboard(
+    port: int = 8000, with_ui: bool = False, host: str = "127.0.0.1"
+) -> None:
     """Start the FastAPI backend, optionally serving the React frontend.
 
     Args:
         port: HTTP port (default 8000).
         with_ui: If True, mount the built React frontend at ``/``.
+        host: Bind address (default 127.0.0.1, use 0.0.0.0 to expose).
     """
     try:
         import uvicorn
@@ -47,12 +50,12 @@ def start_dashboard(port: int = 8000, with_ui: bool = False) -> None:
         from app.main import app  # noqa: F811
 
     print(
-        f"LocalLens {'dashboard' if with_ui else 'API'} running on http://localhost:{port}",
+        f"LocalLens {'dashboard' if with_ui else 'API'} running on http://{host}:{port}",
         file=sys.stderr,
     )
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host=host, port=port)
 
 
-def start_api(port: int = 8000) -> None:
+def start_api(port: int = 8000, host: str = "127.0.0.1") -> None:
     """Start headless API server (no frontend)."""
-    start_dashboard(port=port, with_ui=False)
+    start_dashboard(port=port, with_ui=False, host=host)
