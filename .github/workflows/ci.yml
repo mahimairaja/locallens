@@ -15,16 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v5
-
       - name: Setup Python
-        run: uv python install 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          uv pip install --system -e ".[dev]"
-          uv pip install --system -r backend/requirements.txt
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install -r backend/requirements.txt
 
       - name: Ruff check
         run: ruff check locallens/ backend/app/ tests/
