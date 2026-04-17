@@ -55,11 +55,11 @@ def create_mcp_app():
         return [r.to_dict() for r in results]
 
     @mcp.tool()
-    def locallens_ask(question: str, top_k: int = 3) -> dict:
+    def locallens_ask(question: str, top_k: int = 3) -> dict:  # type: ignore[type-arg]
         """Ask a question about indexed files and get an answer with source citations. Uses RAG with a local LLM. Requires Ollama to be running."""
         lens = _get_lens()
         result = lens.ask(question, top_k=top_k)
-        return result.to_dict()
+        return dict(result.to_dict())
 
     @mcp.tool()
     def locallens_index(folder_path: str, force: bool = False) -> dict:

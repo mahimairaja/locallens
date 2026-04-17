@@ -153,9 +153,7 @@ ignore = [
 "locallens/voice.py" = ["B023"]
 
 [tool.mypy]
-# --- UPDATE THIS LINE ---
-python_version = "3.11" #  project's minimum Python version
-# ------------------------
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
-ignore_missing_imports = true # Can be helpful initially
+ignore_missing_imports = true

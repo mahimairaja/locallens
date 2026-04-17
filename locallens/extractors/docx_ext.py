@@ -23,7 +23,7 @@ class DocxExtractor(LocalLensExtractor):
         try:
             from docx import Document
 
-            doc = Document(file_path)
+            doc = Document(str(file_path))
             return "\n".join(para.text for para in doc.paragraphs)
         except Exception as exc:
             console.print(
