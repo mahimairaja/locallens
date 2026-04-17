@@ -128,6 +128,7 @@ typeCheckingMode = "off"
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+exclude = ["locallens/_version.py"]
 
 [tool.ruff.lint]
 select = [
