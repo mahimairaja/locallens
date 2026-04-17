@@ -47,7 +47,7 @@ class BaseExtractor:
     extractor_name: str = "unknown"
 
     def extract(self, file_path: Path) -> str:  # pragma: no cover
-        ...
+        return ""
 
 
 def discover_plugins() -> dict[str, LocalLensExtractor]:
@@ -63,8 +63,9 @@ def discover_plugins() -> dict[str, LocalLensExtractor]:
     try:
         eps = importlib.metadata.entry_points(group="locallens.extractors")
     except TypeError:
-        # Python < 3.12 compat
-        eps = importlib.metadata.entry_points().get("locallens.extractors", [])
+        # Python < 3.12 compat — entry_points() returns a dict-like
+        all_eps: dict = dict(importlib.metadata.entry_points())  # type: ignore[arg-type]
+        eps = all_eps.get("locallens.extractors", [])
 
     for ep in eps:
         # Skip built-in entry points (they are handled by the registry itself)

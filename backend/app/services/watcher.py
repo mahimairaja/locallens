@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 _WATCHED_FILE = Path.home() / ".locallens" / "watched_folders.json"
 
-_observer: Observer | None = None
+_observer: Observer | None = None  # type: ignore[valid-type]
 _watched_folders: set[str] = set()
 _event_counts: dict[str, int] = {"created": 0, "modified": 0, "deleted": 0}
 _lock = threading.Lock()

@@ -48,11 +48,11 @@ class EpubExtractor(LocalLensExtractor):
                     super().__init__()
                     self._buf = io.StringIO()
 
-                def handle_data(self, data):
+                def handle_data(self, data: str) -> None:
                     self._buf.write(data)
 
                 def get_text(self) -> str:
-                    return self._buf.getvalue()
+                    return str(self._buf.getvalue())
 
             sections: list[str] = []
             for item in book.get_items_of_type(ITEM_DOCUMENT):

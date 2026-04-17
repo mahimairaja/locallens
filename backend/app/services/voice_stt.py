@@ -77,7 +77,7 @@ def _decode_to_pcm_floats(audio_bytes: bytes, target_rate: int = 16000) -> list[
         check=True,
     )
     pcm_int16 = np.frombuffer(proc.stdout, dtype=np.int16)
-    return (pcm_int16.astype(np.float32) / 32768.0).tolist()
+    return list((pcm_int16.astype(np.float32) / 32768.0).tolist())
 
 
 def transcribe(audio_bytes: bytes, sample_rate: int = 16000) -> tuple[str, float]:
