@@ -1,7 +1,7 @@
 [project]
 name = "locallens"
 dynamic = ["version"]
-description = "Search your files by talking to them — 100% offline semantic search with voice"
+description = "Semantic file search engine for AI agents. 100% offline."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11,<3.14"
@@ -60,12 +60,26 @@ test = [
     "anyio[trio]>=4.0.0",
     "httpx>=0.27.0",
 ]
+mcp = [
+    "mcp>=1.0.0",
+]
+server = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "sse-starlette>=2.1.0",
+    "websockets>=13.0",
+    "watchdog>=4.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "anyio[trio]>=4.0.0",
     "httpx>=0.27.0",
     "ruff>=0.4.0",
+]
+all = [
+    "locallens[voice,mcp,server,parsing,ocr]",
 ]
 
 [project.scripts]
@@ -126,11 +140,17 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long, handled by black
-    "B008",  # do not perform function calls in argument defaults
-    "C901",  # too complex
-    "W191",  # indentation contains tabs
+    "E501",  # line length — handled by formatter
+    "B008",  # function call in default arg (FastAPI Depends pattern)
+    "B904",  # raise from in except — CLI uses raise Exit() intentionally
+    "B905",  # zip without strict — too pedantic
+    "C901",  # function complexity
+    "W191",  # tab indentation
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]
+"locallens/voice.py" = ["B023"]
 
 [tool.mypy]
 # --- UPDATE THIS LINE ---
