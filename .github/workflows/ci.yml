@@ -1,0 +1,27 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    paths:
+      - 'locallens/**'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+      - name: Setup Python
+        run: uv python install 3.12
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]" ruff mypy types-PyYAML
+      - name: Ruff
+        run: ruff check locallens backend frontend tests
+      - name: Mypy
+        run: mypy locallens backend frontend

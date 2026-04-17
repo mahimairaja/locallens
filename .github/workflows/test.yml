@@ -43,3 +43,15 @@ jobs:
         env:
           QDRANT_TEST_URL: http://localhost:6333
         run: make test-quick
+
+      - name: Pytest
+        run: |
+          coverage run -m pytest tests
+          coverage xml
+          coverage report
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: mahimairaja/locallens
