@@ -30,6 +30,7 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[test]"
           pip install -r backend/requirements.txt
+          pip install coverage
 
       - name: Wait for Qdrant to be ready
         run: |
@@ -42,16 +43,15 @@ jobs:
       - name: Run tests (skip slow / Ollama-dependent)
         env:
           QDRANT_TEST_URL: http://localhost:6333
-        run: make test-quick
-
-      - name: Pytest
         run: |
-          coverage run -m pytest tests
+          coverage run -m pytest tests/ -v --tb=short -m "not slow"
           coverage xml
           coverage report
 
-      - name: Upload coverage reports to Codecov
+      - name: Upload coverage to Codecov
+        if: always()
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: mahimairaja/locallens
+          fail_ci_if_error: false

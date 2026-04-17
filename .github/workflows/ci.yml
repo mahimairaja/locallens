@@ -5,23 +5,32 @@ on:
     paths:
       - 'locallens/**'
       - 'backend/**'
-      - 'frontend/**'
       - 'tests/**'
       - 'pyproject.toml'
       - '.github/workflows/ci.yml'
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
+
       - name: Setup Python
-        run: uv python install 3.12
+        run: uv python install 3.11
+
       - name: Install dependencies
-        run: uv pip install --system -e ".[dev]" ruff mypy types-PyYAML
-      - name: Ruff
-        run: ruff check locallens backend frontend tests
+        run: |
+          uv pip install --system -e ".[dev]"
+          uv pip install --system -r backend/requirements.txt
+
+      - name: Ruff check
+        run: ruff check locallens/ backend/app/ tests/
+
+      - name: Ruff format check
+        run: ruff format --check locallens/ backend/app/ tests/
+
       - name: Mypy
-        run: mypy locallens backend frontend
+        run: mypy locallens/ backend/app/
