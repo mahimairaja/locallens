@@ -109,7 +109,7 @@ markers = [
 
 [project.urls]
 Homepage = "https://github.com/mahimairaja/locallens"
-Documentation = "https://github.com/mahimairaja/locallens#readme"
+Documentation = "https://mahimairaja.github.io/locallens/"
 Repository = "https://github.com/mahimairaja/locallens"
 Issues = "https://github.com/mahimairaja/locallens/issues"
 

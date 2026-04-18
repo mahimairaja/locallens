@@ -1,4 +1,4 @@
-.PHONY: setup dev stop test test-quick lint clean
+.PHONY: setup dev stop test test-quick lint clean docs docs-build
 
 VENV := .venv
 UVICORN := $(VENV)/bin/uvicorn
@@ -31,6 +31,12 @@ test-quick:
 
 lint:
 	@command -v ruff >/dev/null 2>&1 && ruff check . || echo "ruff not installed, skipping lint"
+
+docs:
+	cd docs && npm run docs:dev
+
+docs-build:
+	cd docs && npm run docs:build
 
 clean:
 	@echo "Removing caches and build artifacts..."
