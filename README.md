@@ -10,6 +10,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![Qdrant Edge](https://img.shields.io/badge/Qdrant-Edge-C67B3C)
 ![Tests](https://github.com/mahimairaja/locallens/actions/workflows/test.yml/badge.svg)
+[![Documentation](https://img.shields.io/badge/docs-locallens-C67B3C)](https://mahimairaja.github.io/locallens/)
 
 ## What It Does
 
@@ -23,6 +24,8 @@
 - **Offline-first** - everything runs on your machine, no cloud APIs, no telemetry
 
 ## Quickstart
+
+> Full documentation at [mahimairaja.github.io/locallens](https://mahimairaja.github.io/locallens/)
 
 ### Prerequisites
 
