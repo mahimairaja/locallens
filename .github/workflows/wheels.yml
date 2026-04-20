@@ -84,6 +84,13 @@ jobs:
           # macOS / Windows: the runner already has rustup via the previous
           # step; just make sure maturin is available inside cibw's env.
           CIBW_BEFORE_BUILD: "pip install maturin"
+          # Pin the macOS deployment target so Rust-emitted binaries match
+          # the wheel tag. Without this, Rust on macos-15 embeds symbols
+          # for the host SDK and delocate-wheel rejects the resulting
+          # wheel (which cibw tags `macosx_10_9_x86_64`). 10.12 is the
+          # minimum supported by current stable Rust; cibw overrides it
+          # to 11.0 on arm64 automatically.
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=10.12"
 
       - uses: actions/upload-artifact@v4
         with:
