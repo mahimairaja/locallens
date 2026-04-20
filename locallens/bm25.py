@@ -34,4 +34,4 @@ def _set_persist_path(path: Path) -> None:
     Used by tests and ``scripts/bench_pipeline.py`` to point the singleton at
     an isolated directory so benchmarks don't touch the user's real index.
     """
-    _index.set_persist_path(Path(path))
+    _index.set_persist_path(path)

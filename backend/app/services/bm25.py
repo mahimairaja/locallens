@@ -34,4 +34,4 @@ def _set_persist_path(path: Path) -> None:
 
     Kept symmetrical with the CLI-side wrapper for tests that exercise both.
     """
-    _index.set_persist_path(Path(path))
+    _index.set_persist_path(path)

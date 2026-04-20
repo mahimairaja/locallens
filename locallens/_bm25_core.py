@@ -108,38 +108,42 @@ class _Bm25Index:
         self._mark_dirty()
 
     def remove_documents(self, doc_ids: list[str]) -> None:
-        """Remove documents by id. Defers write by default."""
+        """Remove documents by id. Defers write by default.
+
+        In-place decrement: subtract each removed doc's contribution from
+        ``df`` and ``total_tokens`` directly, rather than rebuilding from
+        the surviving docs. Cost is O(removed * avg_terms) for counters
+        plus O(N_total) for the array compaction — strictly cheaper than
+        the previous rebuild when removing a small number from a large
+        corpus, and no worse otherwise.
+        """
         if not doc_ids:
             return
         s = self._state
         id_set = set(doc_ids)
-        keep_idx = [i for i, did in enumerate(s.doc_ids) if did not in id_set]
-        if len(keep_idx) == len(s.doc_ids):
-            return  # nothing to remove
+        drop_idx = [i for i, did in enumerate(s.doc_ids) if did in id_set]
+        if not drop_idx:
+            return
 
-        new_doc_ids: list[str] = []
-        new_doc_tf: list[dict[str, int]] = []
-        new_doc_lengths: list[int] = []
-        new_corpus_texts: list[str] = []
-        new_df: dict[str, int] = {}
-        new_total = 0
-        for i in keep_idx:
-            new_doc_ids.append(s.doc_ids[i])
-            tf = s.doc_tf[i]
-            new_doc_tf.append(tf)
-            new_doc_lengths.append(s.doc_lengths[i])
-            new_corpus_texts.append(s.corpus_texts[i])
-            new_total += s.doc_lengths[i]
-            for term in tf:
-                new_df[term] = new_df.get(term, 0) + 1
+        # Subtract the removed docs' contributions to df / total_tokens.
+        for i in drop_idx:
+            s.total_tokens -= s.doc_lengths[i]
+            for term in s.doc_tf[i]:
+                c = s.df.get(term, 0) - 1
+                if c <= 0:
+                    s.df.pop(term, None)
+                else:
+                    s.df[term] = c
 
-        s.doc_ids = new_doc_ids
-        s.doc_tf = new_doc_tf
-        s.doc_lengths = new_doc_lengths
-        s.corpus_texts = new_corpus_texts
-        s.df = new_df
-        s.total_tokens = new_total
-        s.id_to_idx = {did: i for i, did in enumerate(new_doc_ids)}
+        # Compact the parallel arrays. Python lists don't support
+        # mid-delete cheaply, so we rebuild the surviving slices in one
+        # pass using a single set membership check.
+        drop_set = set(drop_idx)
+        s.doc_ids = [v for i, v in enumerate(s.doc_ids) if i not in drop_set]
+        s.doc_tf = [v for i, v in enumerate(s.doc_tf) if i not in drop_set]
+        s.doc_lengths = [v for i, v in enumerate(s.doc_lengths) if i not in drop_set]
+        s.corpus_texts = [v for i, v in enumerate(s.corpus_texts) if i not in drop_set]
+        s.id_to_idx = {did: i for i, did in enumerate(s.doc_ids)}
         s.idf = None
         self._mark_dirty()
 
@@ -155,10 +159,8 @@ class _Bm25Index:
             self._recompute_idf()
         assert s.idf is not None
         idf = s.idf
-        N = len(s.doc_ids)
-        if N == 0:
-            return []
-        avgdl = s.total_tokens / N if N else 0.0
+        N = len(s.doc_ids)  # > 0 — checked above via ``if not s.doc_ids``
+        avgdl = s.total_tokens / N
         k1 = self.k1
         b = self.b
 

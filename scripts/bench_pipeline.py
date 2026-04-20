@@ -293,20 +293,23 @@ def bench_bm25_build_fresh(chunks_all: list[list[str]], paths: list[Path]) -> St
 
 
 def bench_bm25_incremental(chunks_all: list[list[str]], paths: list[Path]) -> StageResult:
-    # Simulate what indexer.py does: call add_documents once per file.
-    # Reset state, then add file-by-file.
+    # Simulate what indexer.py does: call add_documents once per file, then
+    # flush at the end (matches locallens/indexer.py and backend lifespan).
+    # The pre-fix path persisted on every add_documents call, so for a
+    # like-for-like comparison the post-fix measurement must include flush.
     bm25_mod.build_index([])
     t0 = time.perf_counter()
     for p, cs in zip(paths, chunks_all):
         docs = [{"id": f"{p}:{i}", "chunk_text": c} for i, c in enumerate(cs)]
         bm25_mod.add_documents(docs)
+    bm25_mod.flush()
     dt = time.perf_counter() - t0
     total_chunks = sum(len(c) for c in chunks_all)
     return StageResult(
         "bm25_incremental_per_file",
         dt,
         len(paths),
-        note="indexer.py path: add_documents() per file (O(n^2))",
+        note="indexer.py path: add_documents() per file + final flush()",
         extra={
             "total_chunks": total_chunks,
             "files_per_sec": round(len(paths) / dt, 2) if dt else 0.0,

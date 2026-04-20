@@ -121,13 +121,9 @@ def test_add_updates_df_incrementally(tmp_path: Path) -> None:
 # ----------------------------------------------------------------------
 
 
-def test_add_is_linear_not_quadratic(tmp_path: Path) -> None:
-    """Add 500 single-chunk docs one at a time; pre-fix took ~60+ s."""
-    idx = _Bm25Index(tmp_path / "scale.json")
-    # Single warm-up build so any import-time cost is amortised.
-    idx.build_index([])
+def _time_add(idx: _Bm25Index, start: int, n: int) -> float:
     t0 = time.perf_counter()
-    for i in range(500):
+    for i in range(start, start + n):
         idx.add_documents(
             [
                 {
@@ -136,11 +132,35 @@ def test_add_is_linear_not_quadratic(tmp_path: Path) -> None:
                 }
             ]
         )
-    elapsed = time.perf_counter() - t0
-    # Pre-fix reference for 500 per-file calls across ~3779 chunks was 67.7 s;
-    # 500 single-chunk calls on the quadratic path would be on the order of
-    # several seconds. 2.0 s is a very generous ceiling even on slow CI.
-    assert elapsed < 2.0, f"O(N^2) regression: 500 adds took {elapsed:.2f}s"
+    return time.perf_counter() - t0
+
+
+def test_add_is_linear_not_quadratic(tmp_path: Path) -> None:
+    """Assert scaling is linear-ish by comparing two run sizes.
+
+    O(N) adds → elapsed_500 / elapsed_50 ≈ 10×
+    O(N²) adds → elapsed_500 / elapsed_50 ≈ 100× (pre-fix actual was ~120×)
+
+    A threshold of 30× leaves plenty of headroom for noise on slow CI while
+    still catching a quadratic regression.  An env var lets operators raise
+    the threshold on exceptionally slow machines without patching the code.
+    """
+    idx = _Bm25Index(tmp_path / "scale.json")
+    idx.build_index([])
+
+    baseline = _time_add(idx, start=0, n=50)
+    big = _time_add(idx, start=50, n=500)
+
+    # Protect against divide-by-near-zero on ludicrously fast hardware.
+    baseline_floor = max(baseline, 1e-4)
+    ratio = big / baseline_floor
+    max_ratio = float(os.environ.get("BM25_LINEARITY_MAX_RATIO", "30"))
+
+    assert ratio < max_ratio, (
+        f"O(N^2) regression: 500 adds took {big:.3f}s vs 50-add baseline "
+        f"{baseline:.3f}s (ratio={ratio:.1f}x, threshold={max_ratio:.1f}x). "
+        "Linear scaling would be ~10x."
+    )
 
 
 # ----------------------------------------------------------------------

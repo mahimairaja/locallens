@@ -4,27 +4,27 @@
   "results": [
     {
       "stage": "walk",
-      "seconds": 0.0209,
+      "seconds": 0.0134,
       "items": 200,
-      "per_item_ms": 0.105,
+      "per_item_ms": 0.067,
       "note": "rglob + is_file filter"
     },
     {
       "stage": "hash_sha256",
-      "seconds": 0.0418,
+      "seconds": 0.0303,
       "items": 200,
-      "per_item_ms": 0.209,
+      "per_item_ms": 0.151,
       "note": "",
-      "mb_per_sec": 23.11,
+      "mb_per_sec": 31.91,
       "total_mb": 0.97
     },
     {
       "stage": "extract_text",
-      "seconds": 0.0311,
+      "seconds": 0.024,
       "items": 200,
-      "per_item_ms": 0.156,
+      "per_item_ms": 0.12,
       "note": "",
-      "mchars_per_sec": 32.53,
+      "mchars_per_sec": 42.15,
       "total_mchars": 1.01
     },
     {
@@ -38,85 +38,85 @@
     },
     {
       "stage": "bm25_tokenize",
-      "seconds": 0.0286,
+      "seconds": 0.0233,
       "items": 1485,
-      "per_item_ms": 0.019,
+      "per_item_ms": 0.016,
       "note": "",
       "total_tokens": 175869,
-      "tokens_per_sec": 6157589.0
+      "tokens_per_sec": 7553445.0
     },
     {
       "stage": "bm25_build_fresh",
-      "seconds": 0.0662,
+      "seconds": 0.0659,
       "items": 1485,
-      "per_item_ms": 0.045,
+      "per_item_ms": 0.044,
       "note": "build_index(all_docs)",
-      "docs_per_sec": 22416.5
+      "docs_per_sec": 22524.5
     },
     {
       "stage": "bm25_incremental_per_file",
-      "seconds": 0.0532,
+      "seconds": 0.0539,
       "items": 200,
-      "per_item_ms": 0.266,
-      "note": "indexer.py path: add_documents() per file (O(n^2))",
+      "per_item_ms": 0.27,
+      "note": "indexer.py path: add_documents() per file + final flush()",
       "total_chunks": 1485,
-      "files_per_sec": 3759.68
+      "files_per_sec": 3709.22
     },
     {
       "stage": "bm25_search",
-      "seconds": 0.0079,
+      "seconds": 0.0081,
       "items": 14,
-      "per_item_ms": 0.567,
+      "per_item_ms": 0.581,
       "note": "",
-      "queries_per_sec": 1762.2
+      "queries_per_sec": 1720.2
     },
     {
       "stage": "embed_batch_1",
-      "seconds": 0.194,
+      "seconds": 0.3723,
       "items": 1485,
-      "per_item_ms": 0.131,
+      "per_item_ms": 0.251,
       "note": "MOCK (not real ML timing)",
-      "chunks_per_sec": 7654.7
+      "chunks_per_sec": 3988.5
     },
     {
       "stage": "embed_batch_8",
-      "seconds": 0.0488,
+      "seconds": 0.0336,
       "items": 1485,
-      "per_item_ms": 0.033,
+      "per_item_ms": 0.023,
       "note": "MOCK (not real ML timing)",
-      "chunks_per_sec": 30448.9
+      "chunks_per_sec": 44153.9
     },
     {
       "stage": "embed_batch_32",
-      "seconds": 0.0527,
+      "seconds": 0.0339,
       "items": 1485,
-      "per_item_ms": 0.035,
+      "per_item_ms": 0.023,
       "note": "MOCK (not real ML timing)",
-      "chunks_per_sec": 28182.5
+      "chunks_per_sec": 43781.4
     },
     {
       "stage": "embed_batch_64",
-      "seconds": 0.049,
+      "seconds": 0.0336,
       "items": 1485,
-      "per_item_ms": 0.033,
+      "per_item_ms": 0.023,
       "note": "MOCK (not real ML timing)",
-      "chunks_per_sec": 30334.9
+      "chunks_per_sec": 44182.4
     },
     {
       "stage": "embed_query",
-      "seconds": 0.0004,
+      "seconds": 0.0003,
       "items": 14,
-      "per_item_ms": 0.031,
+      "per_item_ms": 0.022,
       "note": "MOCK (not real ML timing)",
-      "queries_per_sec": 32174.3
+      "queries_per_sec": 44719.0
     },
     {
       "stage": "qdrant_edge_upsert",
-      "seconds": 0.1181,
+      "seconds": 0.1066,
       "items": 1485,
-      "per_item_ms": 0.08,
+      "per_item_ms": 0.072,
       "note": "",
-      "points_per_sec": 12578.5
+      "points_per_sec": 13927.0
     },
     {
       "stage": "qdrant_edge_has_hash",
@@ -124,16 +124,16 @@
       "items": 200,
       "per_item_ms": 0.007,
       "note": "",
-      "lookups_per_sec": 151408.9
+      "lookups_per_sec": 152647.3
     },
     {
       "stage": "qdrant_edge_search",
-      "seconds": 0.0049,
+      "seconds": 0.0061,
       "items": 14,
-      "per_item_ms": 0.354,
+      "per_item_ms": 0.433,
       "note": "",
-      "queries_per_sec": 2828.8
+      "queries_per_sec": 2310.1
     }
   ],
-  "end_to_end_total_s": 0.32641716899979656
+  "end_to_end_total_s": 0.2707280450000269
 }
