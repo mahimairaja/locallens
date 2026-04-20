@@ -185,6 +185,35 @@ def time_it(fn, *args, **kwargs) -> tuple[float, object]:
     return time.perf_counter() - t0, out
 
 
+def _total_ram_bytes() -> int:
+    """Cross-platform best-effort total RAM probe for the env summary."""
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    except (AttributeError, ValueError, OSError):
+        pass
+    try:
+        import psutil  # type: ignore[import-not-found]
+
+        return int(psutil.virtual_memory().total)
+    except Exception:
+        return 0
+
+
+def _try_cmd(argv: list[str]) -> str:
+    """Run `argv` and return its first line of stdout, or 'not-installed' on failure."""
+    import subprocess
+
+    try:
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=2)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return "not-installed"
+    return (
+        (out.stdout or out.stderr).strip().splitlines()[0]
+        if (out.stdout or out.stderr)
+        else "unknown"
+    )
+
+
 # ----------------------------------------------------------------------------
 # Stage benchmarks
 # ----------------------------------------------------------------------------
@@ -512,14 +541,42 @@ def main() -> None:
     ap.add_argument(
         "--corpus", type=str, default=None, help="reuse existing corpus dir"
     )
+    ap.add_argument(
+        "--corpus-seed",
+        type=int,
+        default=42,
+        help="RNG seed for the synthetic corpus (default: 42)",
+    )
     ap.add_argument("--skip-store", action="store_true", help="skip Qdrant Edge stages")
     ap.add_argument("--skip-embed", action="store_true", help="skip embedding stages")
+    ap.add_argument(
+        "--skip-embed-cold",
+        action="store_true",
+        help="skip the batch_size=1 per-chunk embed line (saves ~30s at 50k files)",
+    )
     ap.add_argument(
         "--mock-embed",
         action="store_true",
         help="use deterministic fake 384-dim vectors (for bench only, no ML)",
     )
     args = ap.parse_args()
+
+    # One-line hardware summary so numbers are comparable across machines.
+    try:
+        import platform
+
+        cpu_count = os.cpu_count() or 1
+        mem_gb = round(_total_ram_bytes() / (1024**3), 1)
+        rustc = _try_cmd(["rustc", "--version"])
+        print(
+            f"[env] {platform.system()} {platform.machine()} "
+            f"cpu={cpu_count} ram={mem_gb}G "
+            f"python={platform.python_version()} rustc={rustc}"
+        )
+    except Exception as exc:
+        print(f"[env] (could not probe host: {exc})")
+
+    wallclock_start = time.perf_counter()
 
     # Patch in a mock embedder when requested (or when the real one is unavailable).
     if args.mock_embed or not _EMBEDDER_AVAILABLE:
@@ -528,7 +585,7 @@ def main() -> None:
         args.mock_embed = True
         print("[embed] using MOCK embedder (384-dim vectors derived from sha1)")
 
-    rng = random.Random(42)
+    rng = random.Random(args.corpus_seed)
 
     tmp_root = tempfile.mkdtemp(prefix="locallens_bench_")
     if args.corpus:
@@ -604,7 +661,10 @@ def main() -> None:
             results.append(bench_embed_cold(flat_chunks))
 
         # 10. embedding warm, batched
-        for bs in (1, 8, 32, 64):
+        embed_batch_sizes = (1, 8, 32, 64)
+        if args.skip_embed_cold:
+            embed_batch_sizes = tuple(bs for bs in embed_batch_sizes if bs != 1)
+        for bs in embed_batch_sizes:
             r = bench_embed_batched(chunks_all, batch_size=bs)
             if args.mock_embed:
                 r.note = "MOCK (not real ML timing)"
@@ -651,9 +711,11 @@ def main() -> None:
         "qdrant_edge_upsert",
     ]
     total = sum(stage_map[s].seconds for s in end_to_end_stages if s in stage_map)
+    wallclock_total = time.perf_counter() - wallclock_start
     print(
         f"End-to-end index (sum of stages): {total:.2f}s for {len(paths)} files, {len(flat_chunks)} chunks"
     )
+    print(f"Wall-clock including corpus gen + all stages: {wallclock_total:.2f}s")
     print(f"{'stage':<35} {'seconds':>10} {'share':>8}")
     print("-" * 60)
     for s in end_to_end_stages:
