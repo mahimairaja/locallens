@@ -53,6 +53,14 @@ jobs:
 
   wheels:
     name: Build wheels (${{ matrix.os }})
+    # Gate on the Rust crate actually existing. Until src/lib.rs lands,
+    # hatchling produces a pure-Python wheel and cibuildwheel refuses it
+    # (exit 5, "pure Python wheel was generated"). Once the cutover PR
+    # drops Rust source under src/, this job starts running automatically.
+    #
+    # CUTOVER: drop both this `if:` gate AND `continue-on-error: true`
+    # when the Rust crate goes live.
+    if: hashFiles('src/**/*.rs') != ''
     # Infra-only run today; the matrix compiles against the current
     # (hatchling) backend, so failures here don't block merge.
     continue-on-error: true
