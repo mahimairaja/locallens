@@ -14,21 +14,29 @@ path = "src/lib.rs"
 # abi3-py311 → one compiled wheel per (os, arch) covers Python 3.11-3.13.
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py311"] }
 
-# Incremental BM25 state + persistence. Same JSON shape as the Python impl
-# so both backends can read each other's indexes without migration.
+# BM25 state + persistence. Same JSON shape as the Python impl so both
+# backends can read each other's indexes without migration.
 regex = "1.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Optional deps gated behind feature flags — reserved for the future
-# chunker / file-walker / bincode modules.
-rayon = { version = "1.10", optional = true }
+# File walker + parallel SHA-256 (src/walk.rs).
+walkdir = "2"
+sha2 = "0.10"
+hex = "0.4"
+# Parallel hashing. Rayon's global pool auto-sizes to num_cpus; users can
+# override via RAYON_NUM_THREADS.
+rayon = "1.10"
+
+# Reserved for future modules (bincode-backed persistence etc.).
 bincode = { version = "1.3", optional = true }
 
 [features]
 default = []
-parallel = ["dep:rayon"]
 fast-serde = ["dep:bincode"]
+
+[dev-dependencies]
+tempfile = "3"
 
 [profile.release]
 lto = "thin"

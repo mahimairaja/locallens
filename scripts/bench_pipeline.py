@@ -14,10 +14,8 @@ import hashlib
 import json
 import os
 import random
-import statistics
 import tempfile
 import time
-import tracemalloc
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,6 +29,7 @@ from locallens.chunker import chunk_text
 
 try:
     from locallens.embedder import embed_query, embed_texts  # noqa: F401
+
     _EMBEDDER_AVAILABLE = True
 except Exception:
     _EMBEDDER_AVAILABLE = False
@@ -43,13 +42,14 @@ def _mock_embed_texts(texts):
     non-ML stages (upsert, search, bm25) without needing HF access.
     """
     import numpy as np
+
     out = []
     for t in texts:
         h = hashlib.sha1(t.encode("utf-8", errors="ignore")).digest()
         # Tile the 20-byte digest to 384 floats, normalize to unit length.
         rng = np.random.default_rng(int.from_bytes(h[:8], "big"))
         v = rng.standard_normal(384, dtype=np.float32)
-        v /= (np.linalg.norm(v) + 1e-12)
+        v /= np.linalg.norm(v) + 1e-12
         out.append(v.tolist())
     return out
 
@@ -71,10 +71,20 @@ LOREM = (
 )
 
 TOPICS = [
-    "machine learning", "database indexing", "vector search", "rust programming",
-    "python performance", "distributed systems", "offline-first apps",
-    "tokenization", "embedding models", "BM25 ranking", "compiler design",
-    "semantic retrieval", "chunk overlap", "cosine similarity",
+    "machine learning",
+    "database indexing",
+    "vector search",
+    "rust programming",
+    "python performance",
+    "distributed systems",
+    "offline-first apps",
+    "tokenization",
+    "embedding models",
+    "BM25 ranking",
+    "compiler design",
+    "semantic retrieval",
+    "chunk overlap",
+    "cosine similarity",
 ]
 
 
@@ -116,7 +126,9 @@ def make_python(rng: random.Random, n_funcs: int = 8) -> str:
     return "\n".join(lines)
 
 
-def make_plain_text(rng: random.Random, paragraphs: int = 5, para_size: int = 600) -> str:
+def make_plain_text(
+    rng: random.Random, paragraphs: int = 5, para_size: int = 600
+) -> str:
     return "\n\n".join(_paragraph(rng, para_size) for _ in range(paragraphs))
 
 
@@ -200,7 +212,35 @@ def bench_hash(paths: list[Path]) -> StageResult:
         "hash_sha256",
         dt,
         len(paths),
-        extra={"mb_per_sec": round(total_bytes / 1024 / 1024 / dt, 2) if dt else 0.0, "total_mb": round(total_bytes / 1024 / 1024, 2)},
+        extra={
+            "mb_per_sec": round(total_bytes / 1024 / 1024 / dt, 2) if dt else 0.0,
+            "total_mb": round(total_bytes / 1024 / 1024, 2),
+        },
+    )
+
+
+def bench_walk_and_hash_core(
+    root: Path, extensions: frozenset[str], max_file_size_bytes: int
+) -> StageResult:
+    """Measures the actual code path indexer.py now takes — Rust when
+    HAS_RUST_WALKER, Python otherwise. Reported as a separate stage so
+    before/after is visible alongside the rglob + hashlib baseline."""
+    from locallens._file_core import walk_and_hash
+    from locallens._rust import HAS_RUST_WALKER
+
+    t0 = time.perf_counter()
+    entries = walk_and_hash(root, extensions, max_file_size_bytes=max_file_size_bytes)
+    dt = time.perf_counter() - t0
+    total_bytes = sum(e.size for e in entries)
+    return StageResult(
+        "walk_and_hash_core",
+        dt,
+        len(entries),
+        note=f"backend={'rust' if HAS_RUST_WALKER else 'python'}",
+        extra={
+            "mb_per_sec": round(total_bytes / 1024 / 1024 / dt, 2) if dt else 0.0,
+            "total_mb": round(total_bytes / 1024 / 1024, 2),
+        },
     )
 
 
@@ -216,11 +256,16 @@ def bench_extract(paths: list[Path]) -> tuple[StageResult, list[str]]:
         "extract_text",
         dt,
         len(paths),
-        extra={"mchars_per_sec": round(total_chars / 1_000_000 / dt, 2) if dt else 0.0, "total_mchars": round(total_chars / 1_000_000, 2)},
+        extra={
+            "mchars_per_sec": round(total_chars / 1_000_000 / dt, 2) if dt else 0.0,
+            "total_mchars": round(total_chars / 1_000_000, 2),
+        },
     ), texts
 
 
-def bench_chunk(paths: list[Path], texts: list[str]) -> tuple[StageResult, list[list[str]]]:
+def bench_chunk(
+    paths: list[Path], texts: list[str]
+) -> tuple[StageResult, list[list[str]]]:
     chunks_all: list[list[str]] = []
     t0 = time.perf_counter()
     for p, txt in zip(paths, texts):
@@ -231,7 +276,10 @@ def bench_chunk(paths: list[Path], texts: list[str]) -> tuple[StageResult, list[
         "chunk",
         dt,
         len(paths),
-        extra={"total_chunks": n_chunks, "avg_chunks_per_file": round(n_chunks / max(len(paths), 1), 2)},
+        extra={
+            "total_chunks": n_chunks,
+            "avg_chunks_per_file": round(n_chunks / max(len(paths), 1), 2),
+        },
     ), chunks_all
 
 
@@ -240,7 +288,9 @@ def bench_embed_cold(sample_chunks: list[str]) -> StageResult:
     t0 = time.perf_counter()
     embed_texts(sample_chunks[:1])
     dt = time.perf_counter() - t0
-    return StageResult("embed_model_load_+_1chunk", dt, 1, note="first call, loads model")
+    return StageResult(
+        "embed_model_load_+_1chunk", dt, 1, note="first call, loads model"
+    )
 
 
 def bench_embed_batched(chunks_all: list[list[str]], batch_size: int) -> StageResult:
@@ -274,7 +324,9 @@ def bench_embed_query(n: int = 20) -> StageResult:
     )
 
 
-def bench_bm25_build_fresh(chunks_all: list[list[str]], paths: list[Path]) -> StageResult:
+def bench_bm25_build_fresh(
+    chunks_all: list[list[str]], paths: list[Path]
+) -> StageResult:
     # Fresh build: all docs at once (what build_index does).
     docs: list[dict] = []
     for p, cs in zip(paths, chunks_all):
@@ -292,7 +344,9 @@ def bench_bm25_build_fresh(chunks_all: list[list[str]], paths: list[Path]) -> St
     )
 
 
-def bench_bm25_incremental(chunks_all: list[list[str]], paths: list[Path]) -> StageResult:
+def bench_bm25_incremental(
+    chunks_all: list[list[str]], paths: list[Path]
+) -> StageResult:
     # Simulate what indexer.py does: call add_documents once per file, then
     # flush at the end (matches locallens/indexer.py and backend lifespan).
     # The pre-fix path persisted on every add_documents call, so for a
@@ -332,6 +386,7 @@ def bench_bm25_search(queries: list[str], top_k: int = 10) -> StageResult:
 
 def bench_bm25_tokenize(chunks_all: list[list[str]]) -> StageResult:
     import re
+
     flat = [c for cs in chunks_all for c in cs]
     tok_re = re.compile(r"\w+")
     t0 = time.perf_counter()
@@ -350,9 +405,12 @@ def bench_bm25_tokenize(chunks_all: list[list[str]]) -> StageResult:
     )
 
 
-def bench_store_upsert(chunks_all: list[list[str]], paths: list[Path], embeddings: list[list[float]]) -> StageResult:
+def bench_store_upsert(
+    chunks_all: list[list[str]], paths: list[Path], embeddings: list[list[float]]
+) -> StageResult:
     # Build points shaped like indexer.py does.
     from locallens.indexer import UUID_NAMESPACE
+
     store_mod.init()
 
     def _point_id(path: str, i: int) -> str:
@@ -428,9 +486,9 @@ def bench_store_search(queries_vec: list[list[float]], top_k: int = 10) -> Stage
 
 def human_seconds(s: float) -> str:
     if s < 1e-3:
-        return f"{s*1e6:.1f} µs"
+        return f"{s * 1e6:.1f} µs"
     if s < 1.0:
-        return f"{s*1000:.1f} ms"
+        return f"{s * 1000:.1f} ms"
     return f"{s:.2f} s"
 
 
@@ -451,7 +509,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--files", type=int, default=200, help="synthetic file count")
     ap.add_argument("--out", type=str, default=None, help="optional JSON report path")
-    ap.add_argument("--corpus", type=str, default=None, help="reuse existing corpus dir")
+    ap.add_argument(
+        "--corpus", type=str, default=None, help="reuse existing corpus dir"
+    )
     ap.add_argument("--skip-store", action="store_true", help="skip Qdrant Edge stages")
     ap.add_argument("--skip-embed", action="store_true", help="skip embedding stages")
     ap.add_argument(
@@ -486,6 +546,7 @@ def main() -> None:
     bm25_mod._set_persist_path(bench_lens_home / "bm25_index.json")
     # store uses locallens.config.QDRANT_PATH — override via the store module.
     from locallens import config as cfg
+
     cfg.QDRANT_PATH = bench_lens_home / "qdrant_data"
     store_mod.QDRANT_PATH = cfg.QDRANT_PATH
     # Force shard reset.
@@ -493,11 +554,23 @@ def main() -> None:
 
     results: list[StageResult] = []
 
-    # 1. walk
+    # 1. walk (baseline: rglob + is_file)
     results.append(bench_walk(corpus))
 
-    # 2. hash
+    # 2. hash (baseline: hashlib streaming, serial)
     results.append(bench_hash(paths))
+
+    # 2b. combined walk + hash via the shared _file_core path — Rust when
+    # HAS_RUST_WALKER is True. This is what indexer.py actually runs.
+    from locallens.config import MAX_FILE_SIZE_MB, SUPPORTED_EXTENSIONS
+
+    results.append(
+        bench_walk_and_hash_core(
+            corpus,
+            frozenset(SUPPORTED_EXTENSIONS),
+            MAX_FILE_SIZE_MB * 1024 * 1024,
+        )
+    )
 
     # 3. extract (plain read for .md/.txt/.py)
     extract_result, texts = bench_extract(paths)
@@ -578,7 +651,9 @@ def main() -> None:
         "qdrant_edge_upsert",
     ]
     total = sum(stage_map[s].seconds for s in end_to_end_stages if s in stage_map)
-    print(f"End-to-end index (sum of stages): {total:.2f}s for {len(paths)} files, {len(flat_chunks)} chunks")
+    print(
+        f"End-to-end index (sum of stages): {total:.2f}s for {len(paths)} files, {len(flat_chunks)} chunks"
+    )
     print(f"{'stage':<35} {'seconds':>10} {'share':>8}")
     print("-" * 60)
     for s in end_to_end_stages:

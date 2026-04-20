@@ -306,4 +306,64 @@ platform), the Python post-fix path is used. Tests `test_rust_reads_python_json`
 and `test_python_reads_rust_json` verify on-disk cross-compatibility so
 switching install modes never requires a reindex.
 
+---
+
+## Post-walker results (plan 4)
+
+Rust file walker + parallel SHA-256 (`src/walk.rs`,
+`locallens._locallens_rs.RustWalker`) replaced the inline `rglob` +
+serial `hashlib` loop duplicated across `locallens/indexer.py`,
+`backend/app/services/indexer.py`, and `backend/app/services/watcher.py`.
+A new shared core, `locallens/_file_core.py`, is the single entry point
+for all three. The Rust backend uses `walkdir` for traversal + `rayon`
+for cross-core parallel SHA-256; pure-Python fallback stays byte-identical
+(verified by `test_walk_and_hash_rust_matches_python`).
+
+A new `walk_and_hash_core` stage measures the actual code path the
+indexer takes. The existing `walk` + `hash_sha256` baselines stay in the
+bench as reference (rglob + serial hashlib) so before/after is visible
+in one run.
+
+### 200 files / 1,485 chunks
+
+| stage                       | python baseline | rust (combined) | speedup |
+| --------------------------- | --------------- | --------------- | ------- |
+| walk (rglob only)           | 14 ms           | —               | —       |
+| hash_sha256 (hashlib only)  | 28 ms           | —               | —       |
+| **combined walk + hash**    | **42 ms**       | **19 ms**       | **2.2×** |
+
+### 500 files / 3,779 chunks
+
+| stage                       | python baseline | rust (combined) | speedup |
+| --------------------------- | --------------- | --------------- | ------- |
+| walk (rglob only)           | 33 ms           | —               | —       |
+| hash_sha256 (hashlib only)  | 73 ms           | —               | —       |
+| **combined walk + hash**    | **106 ms**      | **38 ms**       | **2.8×** |
+
+### What moved
+
+- **Combined walk + hash: 2.2× at 200 files, 2.8× at 500 files.** Parallel
+  SHA-256 across cores is the dominant win; `walkdir` traversal is only
+  marginally faster than `rglob`. The speedup grows with corpus size as
+  parallelism amortizes.
+- **End-to-end indexing at 500 files drops from ~0.44 s → ~0.34 s (~23 %)**,
+  on top of what Rust BM25 already gave. The pipeline is now:
+  extract 14 % + embed 23 % + bm25 31 % + walk+hash 9 % + chunk 5 % + misc.
+- **walk + hash combined stage share dropped from ~31 % to ~10 %** —
+  no longer the biggest remaining Rust target. Extract is now #1.
+
+### Fallback parity
+
+- `test_walk_and_hash_rust_matches_python` — builds a 6-file fixture
+  tree, runs both backends, asserts identical sorted paths, identical
+  hex SHA-256 values, identical sizes. Byte-for-byte.
+- `test_rust_parallel_equals_serial` — same corpus, parallel vs serial
+  hashing, identical output.
+- `test_symlink_followed_by_default` — both backends include symlinked
+  files with the hash of the resolved target (matches Python's existing
+  `Path.is_file()` behavior).
+
+The `hashlib`-compatible hex output means Qdrant's `has_hash` payload
+index keeps working across upgrade/downgrade without a reindex.
+
 
