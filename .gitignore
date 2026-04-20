@@ -10,6 +10,9 @@ build/
 .eggs/
 *.whl
 
+# hatch-vcs generated
+locallens/_version.py
+
 # Virtual environments
 .venv/
 venv/

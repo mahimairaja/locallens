@@ -226,6 +226,8 @@ def index_folder(folder: Path, force: bool = False) -> None:
 
             progress.advance(task)
 
+    bm25.flush()
+
     elapsed = time.time() - start
     console.print(
         f"\n[green]Indexed {indexed_files} files ({total_chunks} chunks) "

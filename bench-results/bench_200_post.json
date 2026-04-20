@@ -1,0 +1,139 @@
+{
+  "n_files": 200,
+  "n_chunks": 1485,
+  "results": [
+    {
+      "stage": "walk",
+      "seconds": 0.0134,
+      "items": 200,
+      "per_item_ms": 0.067,
+      "note": "rglob + is_file filter"
+    },
+    {
+      "stage": "hash_sha256",
+      "seconds": 0.0303,
+      "items": 200,
+      "per_item_ms": 0.151,
+      "note": "",
+      "mb_per_sec": 31.91,
+      "total_mb": 0.97
+    },
+    {
+      "stage": "extract_text",
+      "seconds": 0.024,
+      "items": 200,
+      "per_item_ms": 0.12,
+      "note": "",
+      "mchars_per_sec": 42.15,
+      "total_mchars": 1.01
+    },
+    {
+      "stage": "chunk",
+      "seconds": 0.0086,
+      "items": 200,
+      "per_item_ms": 0.043,
+      "note": "",
+      "total_chunks": 1485,
+      "avg_chunks_per_file": 7.42
+    },
+    {
+      "stage": "bm25_tokenize",
+      "seconds": 0.0233,
+      "items": 1485,
+      "per_item_ms": 0.016,
+      "note": "",
+      "total_tokens": 175869,
+      "tokens_per_sec": 7553445.0
+    },
+    {
+      "stage": "bm25_build_fresh",
+      "seconds": 0.0659,
+      "items": 1485,
+      "per_item_ms": 0.044,
+      "note": "build_index(all_docs)",
+      "docs_per_sec": 22524.5
+    },
+    {
+      "stage": "bm25_incremental_per_file",
+      "seconds": 0.0539,
+      "items": 200,
+      "per_item_ms": 0.27,
+      "note": "indexer.py path: add_documents() per file + final flush()",
+      "total_chunks": 1485,
+      "files_per_sec": 3709.22
+    },
+    {
+      "stage": "bm25_search",
+      "seconds": 0.0081,
+      "items": 14,
+      "per_item_ms": 0.581,
+      "note": "",
+      "queries_per_sec": 1720.2
+    },
+    {
+      "stage": "embed_batch_1",
+      "seconds": 0.3723,
+      "items": 1485,
+      "per_item_ms": 0.251,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 3988.5
+    },
+    {
+      "stage": "embed_batch_8",
+      "seconds": 0.0336,
+      "items": 1485,
+      "per_item_ms": 0.023,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 44153.9
+    },
+    {
+      "stage": "embed_batch_32",
+      "seconds": 0.0339,
+      "items": 1485,
+      "per_item_ms": 0.023,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 43781.4
+    },
+    {
+      "stage": "embed_batch_64",
+      "seconds": 0.0336,
+      "items": 1485,
+      "per_item_ms": 0.023,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 44182.4
+    },
+    {
+      "stage": "embed_query",
+      "seconds": 0.0003,
+      "items": 14,
+      "per_item_ms": 0.022,
+      "note": "MOCK (not real ML timing)",
+      "queries_per_sec": 44719.0
+    },
+    {
+      "stage": "qdrant_edge_upsert",
+      "seconds": 0.1066,
+      "items": 1485,
+      "per_item_ms": 0.072,
+      "note": "",
+      "points_per_sec": 13927.0
+    },
+    {
+      "stage": "qdrant_edge_has_hash",
+      "seconds": 0.0013,
+      "items": 200,
+      "per_item_ms": 0.007,
+      "note": "",
+      "lookups_per_sec": 152647.3
+    },
+    {
+      "stage": "qdrant_edge_search",
+      "seconds": 0.0061,
+      "items": 14,
+      "per_item_ms": 0.433,
+      "note": "",
+      "queries_per_sec": 2310.1
+    }
+  ],
+  "end_to_end_total_s": 0.2707280450000269
+}
