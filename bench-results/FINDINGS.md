@@ -1,7 +1,9 @@
 # LocalLens engine — pipeline benchmark findings
 
 Benchmark script: [`scripts/bench_pipeline.py`](../scripts/bench_pipeline.py)  
-Reports: `bench_200.json`, `bench_500.json`  
+Reports: `bench_200.json`, `bench_500.json` (pre-fix);
+`bench_200_post.json`, `bench_500_post.json` (post-fix, see the
+"Post-fix results" section at the bottom).  
 Corpus: synthetic `.md`/`.txt`/`.py` files (~5 KB avg), seeded RNG (reproducible).  
 Embedder: **mocked** 384-dim vectors — HuggingFace was unreachable in the sandbox.
 Real `all-MiniLM-L6-v2` timings are referenced from published numbers below.
@@ -174,3 +176,67 @@ uv pip install rank-bm25                          # dev-time dep
 ```
 
 With real HF access, drop `--mock-embed` to measure actual embedding throughput.
+
+---
+
+## Post-fix results
+
+Fix landed: `locallens/_bm25_core.py` replaces `rank_bm25.BM25Okapi` with a
+parameterised incremental index. Running the same bench on the same synthetic
+corpus (seeded RNG):
+
+### 200 files / 1,485 chunks
+
+| stage                       | pre-fix   | post-fix  | speedup |
+| --------------------------- | --------- | --------- | ------- |
+| walk                        | 30 ms     | 21 ms     | 1.4 ×   |
+| hash (sha256)               | 53 ms     | 42 ms     | 1.3 ×   |
+| extract                     | 47 ms     | 31 ms     | 1.5 ×   |
+| chunk                       | 12 ms     | 9 ms      | 1.3 ×   |
+| **bm25 incremental**        | **10,520 ms** | **53 ms** | **198 ×** |
+| bm25 build-from-scratch     | 115 ms    | 66 ms     | 1.7 ×   |
+| bm25 search (×14 queries)   | 27 ms     | 8 ms      | 3.4 ×   |
+| qdrant edge upsert          | 131 ms    | 118 ms    | ~1 ×    |
+| **end-to-end index**        | **10.86 s** | **0.33 s** | **33 ×** |
+
+### 500 files / 3,779 chunks (scaling check)
+
+| stage                       | pre-fix   | post-fix  | speedup |
+| --------------------------- | --------- | --------- | ------- |
+| **bm25 incremental**        | **67,699 ms** | **141 ms** | **480 ×** |
+| bm25 search (×14 queries)   | 72 ms     | 29 ms     | 2.5 ×   |
+| **end-to-end index**        | **~68 s** | **0.50 s** | **~136 ×** |
+
+### Scaling is now linear
+
+`bm25_incremental_per_file` at 200 → 500 files: **2.66 ×** for 2.5 × input.
+Pre-fix was 6.4 × for the same step — the O(N²) tail is gone.
+
+### Why so much bigger than the plan's estimate
+
+The plan targeted ≥ 35 × at 200 files and ≥ 80 × at 500 files. We beat both by
+roughly 5×. Two reasons:
+
+1. The pre-fix path wasn't just `O(N²)` — it also re-tokenized every doc and
+   re-ran `BM25Okapi.__init__` (which walks the whole corpus building its own
+   tf / df tables) on every add. Eliminating both loops together gives a
+   multiplicative win.
+2. Scoring moved from `np.array([doc.get(t, 0) for doc in self.doc_freqs])`
+   inside a NumPy helper to a direct dict lookup in a tight Python loop.
+   That's a wash on throughput but it drops ~20 ms per query at this corpus
+   size because NumPy's per-call setup overhead is gone.
+
+### What dominates wall-clock now
+
+At 200 files post-fix: `qdrant_edge_upsert` (36 %), `bm25_incremental_per_file`
+(16 %), `embed_batch_32` (16 %, mocked — real embeddings would push this to
+the top). BM25 is no longer a bottleneck at any corpus size we measured; the
+pipeline is now bounded by model inference and the vector store, as expected.
+
+### Rust revisited
+
+With this fix in, the earlier recommendation stands even more strongly:
+a Rust port of BM25 would save ~50-150 ms end-to-end at typical corpus sizes
+— well under the ~500 ms floor set by embedding + Qdrant. Revisit only if a
+user reports pain on a corpus much larger than we've measured here.
+

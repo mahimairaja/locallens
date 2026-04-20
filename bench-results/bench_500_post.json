@@ -1,0 +1,115 @@
+{
+  "n_files": 500,
+  "n_chunks": 3779,
+  "results": [
+    {
+      "stage": "walk",
+      "seconds": 0.0487,
+      "items": 500,
+      "per_item_ms": 0.097,
+      "note": "rglob + is_file filter"
+    },
+    {
+      "stage": "hash_sha256",
+      "seconds": 0.0966,
+      "items": 500,
+      "per_item_ms": 0.193,
+      "note": "",
+      "mb_per_sec": 25.23,
+      "total_mb": 2.44
+    },
+    {
+      "stage": "extract_text",
+      "seconds": 0.0817,
+      "items": 500,
+      "per_item_ms": 0.163,
+      "note": "",
+      "mchars_per_sec": 31.28,
+      "total_mchars": 2.56
+    },
+    {
+      "stage": "chunk",
+      "seconds": 0.0225,
+      "items": 500,
+      "per_item_ms": 0.045,
+      "note": "",
+      "total_chunks": 3779,
+      "avg_chunks_per_file": 7.56
+    },
+    {
+      "stage": "bm25_tokenize",
+      "seconds": 0.0631,
+      "items": 3779,
+      "per_item_ms": 0.017,
+      "note": "",
+      "total_tokens": 442821,
+      "tokens_per_sec": 7019468.0
+    },
+    {
+      "stage": "bm25_build_fresh",
+      "seconds": 0.1765,
+      "items": 3779,
+      "per_item_ms": 0.047,
+      "note": "build_index(all_docs)",
+      "docs_per_sec": 21413.6
+    },
+    {
+      "stage": "bm25_incremental_per_file",
+      "seconds": 0.1407,
+      "items": 500,
+      "per_item_ms": 0.281,
+      "note": "indexer.py path: add_documents() per file (O(n^2))",
+      "total_chunks": 3779,
+      "files_per_sec": 3554.81
+    },
+    {
+      "stage": "bm25_search",
+      "seconds": 0.0288,
+      "items": 14,
+      "per_item_ms": 2.056,
+      "note": "",
+      "queries_per_sec": 486.5
+    },
+    {
+      "stage": "embed_batch_1",
+      "seconds": 0.2436,
+      "items": 3779,
+      "per_item_ms": 0.064,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 15514.4
+    },
+    {
+      "stage": "embed_batch_8",
+      "seconds": 0.111,
+      "items": 3779,
+      "per_item_ms": 0.029,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 34045.1
+    },
+    {
+      "stage": "embed_batch_32",
+      "seconds": 0.1123,
+      "items": 3779,
+      "per_item_ms": 0.03,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 33637.3
+    },
+    {
+      "stage": "embed_batch_64",
+      "seconds": 0.1146,
+      "items": 3779,
+      "per_item_ms": 0.03,
+      "note": "MOCK (not real ML timing)",
+      "chunks_per_sec": 32970.5
+    },
+    {
+      "stage": "embed_query",
+      "seconds": 0.0004,
+      "items": 14,
+      "per_item_ms": 0.029,
+      "note": "MOCK (not real ML timing)",
+      "queries_per_sec": 34888.2
+    }
+  ],
+  "end_to_end_total_s": 0.5024720339999931
+}

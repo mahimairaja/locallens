@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     watcher.stop()
+    bm25.flush()
 
 
 app = FastAPI(title="LocalLens API", version="0.1.0", lifespan=lifespan)

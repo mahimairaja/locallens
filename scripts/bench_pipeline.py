@@ -480,8 +480,7 @@ def main() -> None:
     # Point the store & bm25 at an isolated path so we don't touch user data.
     bench_lens_home = Path(tmp_root) / "locallens_home"
     bench_lens_home.mkdir(parents=True, exist_ok=True)
-    # bm25 uses ~/.locallens/bm25_index.json — override the module constant.
-    bm25_mod._BM25_PATH = bench_lens_home / "bm25_index.json"
+    bm25_mod._set_persist_path(bench_lens_home / "bm25_index.json")
     # store uses locallens.config.QDRANT_PATH — override via the store module.
     from locallens import config as cfg
     cfg.QDRANT_PATH = bench_lens_home / "qdrant_data"
