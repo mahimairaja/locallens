@@ -78,6 +78,10 @@ dev = [
     "httpx>=0.27.0",
     "ruff>=0.4.0",
     "mypy>=1.10.0",
+    # Contributors iterating on the (currently inactive) Rust extension can
+    # run `maturin develop --release` locally. Build-system migration to
+    # maturin is deferred — see the CUTOVER block below.
+    "maturin>=1.7.0",
 ]
 all = [
     "locallens[voice,mcp,server,parsing,ocr]",
@@ -116,6 +120,24 @@ Issues = "https://github.com/mahimairaja/locallens/issues"
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+# CUTOVER: when src/lib.rs lands, replace the [build-system] block above with:
+#
+#   [build-system]
+#   requires = ["maturin>=1.7,<2.0"]
+#   build-backend = "maturin"
+#
+#   [tool.maturin]
+#   module-name = "locallens._locallens_rs"
+#   features = ["pyo3/extension-module", "pyo3/abi3-py311"]
+#   python-source = "."
+#   strip = true
+#
+# Also flip `.github/workflows/wheels.yml` `release: published` trigger on,
+# drop `continue-on-error` from the `wheels` job, and delete
+# `.github/workflows/publish.yml`. See
+# /root/.claude/plans/1-fix-the-python-foamy-spindle.md "Plan 2" for the
+# full rollout.
 
 [tool.hatch.version]
 source = "vcs"
