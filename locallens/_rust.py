@@ -6,15 +6,23 @@ lands the PyO3 crate, it exports ``HAS_BM25`` / ``HAS_CHUNKER`` / ``HAS_WALKER``
 symbols on the extension module and the matching flags below flip to
 ``True`` on import.
 
+Install layout: maturin with ``module-name = "locallens._locallens_rs"``
+(per the CUTOVER block in ``pyproject.toml``) installs the compiled
+extension inside the package, reachable as ``locallens._locallens_rs``.
+We try that path first, then fall back to a top-level ``_locallens_rs``
+import so a manually-installed or legacy-layout extension still works.
+
 This module is imported eagerly at module-load time by any caller that
 wants to branch on Rust availability. The import must never raise — a
-failed import of ``_locallens_rs`` is the expected state until the crate
+failed import of the extension is the expected state until the crate
 is built.
 """
 
 from __future__ import annotations
 
 import logging
+from types import ModuleType
+from typing import cast
 
 log = logging.getLogger(__name__)
 
@@ -23,18 +31,30 @@ HAS_RUST_BM25: bool = False
 HAS_RUST_CHUNKER: bool = False
 HAS_RUST_WALKER: bool = False
 
-try:
-    import _locallens_rs  # type: ignore[import-not-found]
 
+def _import_extension() -> ModuleType | None:
+    """Try the in-package layout first, then the top-level fallback."""
+    try:
+        from locallens import _locallens_rs  # type: ignore[attr-defined]
+
+        return cast(ModuleType, _locallens_rs)
+    except ImportError:
+        pass
+    try:
+        import _locallens_rs  # type: ignore[import-not-found]
+
+        return cast(ModuleType, _locallens_rs)
+    except ImportError as exc:
+        log.debug("Rust extension not available (pure-Python fallback): %s", exc)
+        return None
+
+
+_ext = _import_extension()
+if _ext is not None:
     HAS_RUST = True
-    HAS_RUST_BM25 = bool(getattr(_locallens_rs, "HAS_BM25", False))
-    HAS_RUST_CHUNKER = bool(getattr(_locallens_rs, "HAS_CHUNKER", False))
-    HAS_RUST_WALKER = bool(getattr(_locallens_rs, "HAS_WALKER", False))
-except ImportError as exc:
-    # DEBUG, not WARNING: the extension is optional and missing-by-default
-    # until a later PR ships the compiled wheel. A WARNING would spam every
-    # import with something the user can't act on.
-    log.debug("Rust extension not available (pure-Python fallback): %s", exc)
+    HAS_RUST_BM25 = bool(getattr(_ext, "HAS_BM25", False))
+    HAS_RUST_CHUNKER = bool(getattr(_ext, "HAS_CHUNKER", False))
+    HAS_RUST_WALKER = bool(getattr(_ext, "HAS_WALKER", False))
 
 
 def has_rust_extension() -> bool:
