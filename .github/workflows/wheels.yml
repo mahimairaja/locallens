@@ -62,16 +62,28 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Install the Rust toolchain on the runner host. This covers macOS
+      # (x86_64 + arm64) and Windows — cibuildwheel runs directly on the
+      # host there, so a host-installed rustup is discovered by maturin.
+      # On Linux, cibuildwheel uses a manylinux Docker container in which
+      # the host toolchain is NOT visible, so `CIBW_BEFORE_ALL_LINUX` below
+      # installs Rust a second time inside the container.
+      - name: Install Rust toolchain (runner host)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Build wheels (cibuildwheel)
         uses: pypa/cibuildwheel@v2.21
         env:
           # abi3-py311 → one wheel per (os, arch) covers Python 3.11-3.13.
           CIBW_BUILD: "cp311-*"
           CIBW_SKIP: "*-musllinux_i686 *-win32 *-manylinux_i686"
-          # Install maturin AND the Rust toolchain inside each cibw env.
-          CIBW_BEFORE_ALL_LINUX: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && source $HOME/.cargo/env && rustup target add x86_64-unknown-linux-gnu"
-          CIBW_BEFORE_BUILD: "pip install maturin"
+          # Linux: install rustup inside the manylinux container (host
+          # toolchain isn't visible to cibw on Linux).
+          CIBW_BEFORE_ALL_LINUX: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable"
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          # macOS / Windows: the runner already has rustup via the previous
+          # step; just make sure maturin is available inside cibw's env.
+          CIBW_BEFORE_BUILD: "pip install maturin"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -305,10 +305,15 @@ _RUST_IMPORT_REASON = "Rust extension (locallens._locallens_rs) not built"
 
 
 def _get_rust_cls():
-    """Import RustBM25 lazily so the rest of the file loads without Rust."""
+    """Import RustBM25 lazily so the rest of the file loads without Rust.
+
+    Catches only ``ModuleNotFoundError``: any other ``ImportError`` (ABI
+    mismatch, missing symbol, etc.) indicates the extension is present but
+    broken, which should fail CI rather than silently skip the tests.
+    """
     try:
         from locallens._locallens_rs import RustBM25  # type: ignore[import-not-found]
-    except ImportError:
+    except ModuleNotFoundError:
         pytest.skip(_RUST_IMPORT_REASON)
     return RustBM25
 

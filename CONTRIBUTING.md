@@ -68,35 +68,49 @@ my_format = "locallens.extractors.my_format:MyFormatExtractor"
 python -c "from locallens.extractors import get_extractor; print(get_extractor('.xyz'))"
 ```
 
-## Working on the Rust extension (future)
+## Working on the Rust extension
 
-LocalLens is pure-Python today. A `Cargo.toml` stub at the repo root and a
-`locallens/_rust.py` loader shim are already checked in so a later PR can
-land a PyO3-based native extension without churn.
+LocalLens ships a compiled PyO3 extension (`locallens._locallens_rs`) for
+performance-critical modules. BM25 is the first — chunker and file-walker
+will follow. The Python fallback (`locallens/_bm25_core.py`, …) is still
+present and used when the extension can't be loaded (sdist install
+without rustc, unsupported platform), so a contributor without Rust can
+still run the full test suite minus the Rust parity tests.
 
-To prepare your dev env for that future work:
+### Setting up a local dev env
 
 1. Install rustup: <https://rustup.rs>
-2. `rustup toolchain install stable` — the project will pin a stable rustc
-   in `rust-toolchain.toml` when the first `src/*.rs` file lands.
+2. `rustup toolchain install stable`
 3. `cargo --version` — sanity check.
-4. `pip install -e ".[dev]"` — installs `maturin` along with the usual test
-   tooling.
+4. `pip install -e ".[dev]"` — installs maturin + the usual test tooling.
+5. `maturin develop --release` — builds the extension into the active
+   venv. Re-run after any change to `src/*.rs`, `Cargo.toml`, or
+   `pyproject.toml`.
 
-While the crate is inactive (no `src/lib.rs` yet):
+### Verifying the extension is live
 
-- `cargo build` intentionally fails. That's expected — the layout is
-  reserved but there is no Rust code to compile.
-- `python -c "from locallens._rust import HAS_RUST; print(HAS_RUST)"` prints
-  `False`. Every caller keeps using the pure-Python implementation.
-- `pip install locallens` works without rustc. The release pipeline
-  (`.github/workflows/publish.yml`) still builds a pure-Python wheel via
-  hatchling; nothing about installation changes until the cutover PR
-  described at the bottom of `pyproject.toml` lands.
+```bash
+python -c "from locallens._rust import HAS_RUST_BM25; print(HAS_RUST_BM25)"
+# True  — the Python wrapper in locallens/bm25.py now delegates to Rust.
+```
 
-When the Rust crate goes live, `maturin develop --release` in the repo root
-will build `_locallens_rs` into the active venv, and the shim in
-`locallens/_rust.py` will flip `HAS_RUST` to `True` on the next import.
+If it prints `False`, the extension isn't importable — re-run `maturin
+develop` and check for build errors.
+
+### Running the Rust side of the test suite
+
+- `cargo test --lib` — unit tests inside `src/bm25.rs`.
+- `pytest tests/test_bm25.py -v` — exercises both implementations. The
+  parity tests (`test_rust_python_search_parity`, `test_rust_reads_python_json`,
+  `test_python_reads_rust_json`) auto-skip when the extension isn't built.
+
+### Release / wheel build
+
+Wheels are built by `.github/workflows/wheels.yml` on every tagged
+release. It publishes to PyPI via Trusted Publishing (no token secret
+required) and uses `abi3-py311`, so a single wheel per (os, arch) covers
+Python 3.11–3.13. The older `publish.yml` is gone — all release
+engineering is now in `wheels.yml`.
 
 ## Finding Issues
 

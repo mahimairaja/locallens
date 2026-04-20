@@ -1,21 +1,27 @@
 """Runtime capability flags for the optional Rust extension.
 
-Today the extension does not exist; ``HAS_RUST`` is always ``False`` and
-every caller falls back to the pure-Python implementation. When a later PR
-lands the PyO3 crate, it exports ``HAS_BM25`` / ``HAS_CHUNKER`` / ``HAS_WALKER``
-symbols on the extension module and the matching flags below flip to
-``True`` on import.
+The compiled extension at ``locallens._locallens_rs`` (built by maturin;
+see ``pyproject.toml`` ``[tool.maturin]``) exports module-level
+``HAS_BM25`` / ``HAS_CHUNKER`` / ``HAS_WALKER`` booleans so the rollout
+can ship one module at a time. This file reads those flags on import and
+re-exports:
+
+- ``HAS_RUST`` — True iff the extension imports at all.
+- ``HAS_RUST_BM25`` — True iff the extension advertises the BM25 class.
+- ``HAS_RUST_CHUNKER``, ``HAS_RUST_WALKER`` — reserved for future modules
+  (always False today).
 
 Install layout: maturin with ``module-name = "locallens._locallens_rs"``
-(per the CUTOVER block in ``pyproject.toml``) installs the compiled
-extension inside the package, reachable as ``locallens._locallens_rs``.
-We try that path first, then fall back to a top-level ``_locallens_rs``
-import so a manually-installed or legacy-layout extension still works.
+installs the compiled extension inside the package, reachable as
+``locallens._locallens_rs``. We try that path first, then fall back to a
+top-level ``_locallens_rs`` import so a manually-installed or legacy-layout
+extension still works.
 
 This module is imported eagerly at module-load time by any caller that
-wants to branch on Rust availability. The import must never raise — a
-failed import of the extension is the expected state until the crate
-is built.
+wants to branch on Rust availability. The import must never raise — when
+a user installs from sdist without a Rust toolchain (or uses an
+unsupported platform), the ``HAS_RUST*`` flags stay False and callers
+fall back to the pure-Python implementation.
 """
 
 from __future__ import annotations

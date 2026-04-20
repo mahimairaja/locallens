@@ -78,9 +78,10 @@ dev = [
     "httpx>=0.27.0",
     "ruff>=0.4.0",
     "mypy>=1.10.0",
-    # Contributors iterating on the (currently inactive) Rust extension can
-    # run `maturin develop --release` locally. Build-system migration to
-    # maturin is deferred — see the CUTOVER block below.
+    # maturin is already the active build-backend (see [build-system]
+    # below); we also list it in the `dev` extras so contributors get it
+    # via `pip install -e ".[dev]"` for direct invocation as
+    # `maturin develop --release`.
     "maturin>=1.7.0",
 ]
 all = [
