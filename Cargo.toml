@@ -9,8 +9,8 @@ description = "Native acceleration crate for LocalLens. Inactive scaffold until 
 name = "_locallens_rs"
 crate-type = ["cdylib"]
 # Intentionally missing: `cargo build` fails-closed until a follow-up PR
-# lands the first Rust module. See plan 2 in
-# /root/.claude/plans/1-fix-the-python-foamy-spindle.md for the rollout.
+# lands the first Rust module. See CONTRIBUTING.md section "Working on the
+# Rust extension (future)" for the contributor-facing rollout plan.
 path = "src/lib.rs"
 
 [dependencies]

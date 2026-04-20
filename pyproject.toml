@@ -135,9 +135,8 @@ build-backend = "hatchling.build"
 #
 # Also flip `.github/workflows/wheels.yml` `release: published` trigger on,
 # drop `continue-on-error` from the `wheels` job, and delete
-# `.github/workflows/publish.yml`. See
-# /root/.claude/plans/1-fix-the-python-foamy-spindle.md "Plan 2" for the
-# full rollout.
+# `.github/workflows/publish.yml`. See CONTRIBUTING.md section
+# "Working on the Rust extension (future)" for the contributor-facing rollout.
 
 [tool.hatch.version]
 source = "vcs"
