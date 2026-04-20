@@ -734,6 +734,7 @@ def main() -> None:
                     "n_chunks": len(flat_chunks),
                     "results": [r.row() for r in results],
                     "end_to_end_total_s": total,
+                    "wallclock_total_s": round(wallclock_total, 3),
                 },
                 indent=2,
             )

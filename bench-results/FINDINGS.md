@@ -376,7 +376,7 @@ indexing time first becomes user-visible.
 
 All three runs on the same environment:
 
-```
+```text
 Linux x86_64  cpu=16  ram=21.0G  python=3.11.15  rustc=1.94.1
 ```
 
@@ -394,8 +394,8 @@ three outputs committed as `bench_500_rust_v2.json`, `bench_5k_rust.json`,
 | **walk_and_hash_core (rust)** | **n/a (small)** | **958 ms** | **9,220 ms** |  —   |   9.6× |
 | extract_text                |  134 ms  | 1,264 ms | 12,711 ms |   9.4× |  10.1× |
 | chunk                       |   30 ms  |  302 ms |  3,078 ms |  10.1× |  10.2× |
-| bm25_tokenize               |   79 ms  |  991 ms |  9,840 ms |  12.5× |   9.9× |
-| bm25_build_fresh            |  200 ms  | 2,360 ms | 25,580 ms |  11.8× |  10.8× |
+| bm25_tokenize               |  102 ms  |  991 ms |  9,840 ms |   9.7× |   9.9× |
+| bm25_build_fresh            |  237 ms  | 2,360 ms | 25,580 ms |  10.0× |  10.8× |
 | bm25_incremental_per_file   |  160 ms  | 1,648 ms | 15,611 ms |  10.3× |   9.5× |
 | bm25_search (14 queries)    |   11 ms  |  128 ms |  1,970 ms |  11.6× |  15.4× |
 | embed_batch_32 (mock)       |  192 ms  | 1,719 ms | 17,893 ms |   9.0× |  10.4× |
