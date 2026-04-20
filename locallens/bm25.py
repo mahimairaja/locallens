@@ -1,8 +1,12 @@
 """BM25 keyword index for hybrid search (CLI side).
 
-Thin wrapper around ``locallens._bm25_core._Bm25Index``. The module-level
-API is preserved for callers: ``build_index``, ``add_documents``,
-``remove_documents``, ``search``, ``load``, ``is_loaded``, plus ``flush``.
+Thin wrapper. When the compiled Rust extension is available (see
+``locallens._rust``), this module uses ``RustBM25`` for the in-memory index;
+otherwise it falls back to the pure-Python ``_Bm25Index``. Both implementations
+expose the same public API — ``build_index``, ``add_documents``,
+``remove_documents``, ``search``, ``load``, ``is_loaded``, ``flush``,
+``set_persist_path`` — and read/write the same on-disk JSON shape, so
+switching between them never requires migration.
 
 Persists to ``~/.locallens/bm25_index.json`` by default.
 """
@@ -11,11 +15,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from locallens._bm25_core import _Bm25Index
+from locallens._rust import HAS_RUST_BM25
+
+if HAS_RUST_BM25:
+    from locallens._locallens_rs import (
+        RustBM25 as _IndexImpl,  # type: ignore[attr-defined]
+    )
+else:
+    from locallens._bm25_core import (
+        _Bm25Index as _IndexImpl,  # type: ignore[assignment]
+    )
 
 _BM25_PATH = Path.home() / ".locallens" / "bm25_index.json"
 
-_index = _Bm25Index(_BM25_PATH)
+_index = _IndexImpl(_BM25_PATH)
 
 # Module-level re-exports so existing callers (``bm25.add_documents(...)``)
 # keep working without change.

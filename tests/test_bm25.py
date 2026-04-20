@@ -295,6 +295,100 @@ def test_cli_and_backend_share_core() -> None:
 # ----------------------------------------------------------------------
 
 
+# ----------------------------------------------------------------------
+# Rust parity — prevents Rust / Python ranking or persistence drift.
+# Skipped automatically when the Rust extension isn't built.
+# ----------------------------------------------------------------------
+
+
+_RUST_IMPORT_REASON = "Rust extension (locallens._locallens_rs) not built"
+
+
+def _get_rust_cls():
+    """Import RustBM25 lazily so the rest of the file loads without Rust."""
+    try:
+        from locallens._locallens_rs import RustBM25  # type: ignore[import-not-found]
+    except ImportError:
+        pytest.skip(_RUST_IMPORT_REASON)
+    return RustBM25
+
+
+def test_rust_python_search_parity(tmp_path: Path) -> None:
+    """Rust and Python implementations must produce identical rankings and
+    scores for the same corpus + query. Prevents silent divergence."""
+    RustBM25 = _get_rust_cls()
+
+    py_idx = _Bm25Index(tmp_path / "py.json")
+    rs_idx = RustBM25(str(tmp_path / "rs.json"))
+
+    docs = _make_docs(FIXED_CORPUS)
+    py_idx.build_index(docs)
+    rs_idx.build_index(docs)
+
+    queries = [
+        "fox",
+        "lazy dog",
+        "sphinx quartz",
+        "jump",
+        "indexing search",
+        "wizards jump",
+        "quick brown",
+        "discotheques",
+        "cats dogs",
+        "morning light",
+    ]
+    for q in queries:
+        py_hits = py_idx.search(q, top_k=len(FIXED_CORPUS))
+        rs_hits = rs_idx.search(q, top_k=len(FIXED_CORPUS))
+        assert [d for d, _ in py_hits] == [d for d, _ in rs_hits], (
+            f"ranking diverged for {q!r}: py={py_hits} rs={rs_hits}"
+        )
+        for (pid, ps), (rid, rs) in zip(py_hits, rs_hits):
+            assert pid == rid
+            assert abs(ps - rs) < 1e-9, (
+                f"score diverged for {q!r} doc={pid}: py={ps} rs={rs}"
+            )
+
+
+def test_rust_reads_python_json(tmp_path: Path) -> None:
+    """An index written by _Bm25Index must be loadable by RustBM25 and
+    produce the same top-k."""
+    RustBM25 = _get_rust_cls()
+
+    path = tmp_path / "shared.json"
+    py_idx = _Bm25Index(path)
+    py_idx.build_index(_make_docs(FIXED_CORPUS))
+    py_idx.flush()
+
+    rs_idx = RustBM25(str(path))
+    rs_idx.load()
+    assert rs_idx.is_loaded()
+
+    for q in ["sphinx", "jump", "lazy"]:
+        py_hits = py_idx.search(q, top_k=5)
+        rs_hits = rs_idx.search(q, top_k=5)
+        assert [d for d, _ in py_hits] == [d for d, _ in rs_hits]
+
+
+def test_python_reads_rust_json(tmp_path: Path) -> None:
+    """An index written by RustBM25 must be loadable by _Bm25Index."""
+    RustBM25 = _get_rust_cls()
+
+    path = tmp_path / "shared_rs.json"
+    rs_idx = RustBM25(str(path))
+    rs_idx.build_index(_make_docs(FIXED_CORPUS))
+    rs_idx.flush()
+
+    py_idx = _Bm25Index(path)
+    py_idx.load()
+    assert py_idx.is_loaded()
+
+    for q in ["sphinx", "jump", "lazy"]:
+        rs_hits = rs_idx.search(q, top_k=5)
+        py_hits = py_idx.search(q, top_k=5)
+        assert [d for d, _ in rs_hits] == [d for d, _ in py_hits]
+
+
 def test_wrapper_set_persist_path(tmp_path: Path) -> None:
     from locallens import bm25 as cli_bm25
 
@@ -302,7 +396,9 @@ def test_wrapper_set_persist_path(tmp_path: Path) -> None:
     redirect = tmp_path / "nested" / "idx.json"
     try:
         cli_bm25._set_persist_path(redirect)
-        assert cli_bm25._index.persist_path == redirect
+        # RustBM25 returns a str; _Bm25Index returns a Path. Normalize so
+        # the test works against either backend.
+        assert Path(cli_bm25._index.persist_path) == redirect
         cli_bm25.build_index([{"id": str(uuid.uuid4()), "chunk_text": "hello world"}])
         assert redirect.exists()
     finally:

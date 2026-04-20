@@ -1,27 +1,28 @@
 [package]
 name = "locallens-rs"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 publish = false
-description = "Native acceleration crate for LocalLens. Inactive scaffold until src/lib.rs lands."
+description = "Native BM25 + future chunker/walker acceleration crate for LocalLens."
 
 [lib]
 name = "_locallens_rs"
 crate-type = ["cdylib"]
-# Intentionally missing: `cargo build` fails-closed until a follow-up PR
-# lands the first Rust module. See CONTRIBUTING.md section "Working on the
-# Rust extension (future)" for the contributor-facing rollout plan.
 path = "src/lib.rs"
 
 [dependencies]
 # abi3-py311 → one compiled wheel per (os, arch) covers Python 3.11-3.13.
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py311"] }
 
-# Optional deps are gated behind feature flags so they don't compile
-# until the module that uses them actually lands.
+# Incremental BM25 state + persistence. Same JSON shape as the Python impl
+# so both backends can read each other's indexes without migration.
+regex = "1.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Optional deps gated behind feature flags — reserved for the future
+# chunker / file-walker / bincode modules.
 rayon = { version = "1.10", optional = true }
-# bincode 2.x changed the serde integration — pin to the 1.3.x series for
-# now. Revisit when the Rust BM25 port actually wires it up.
 bincode = { version = "1.3", optional = true }
 
 [features]

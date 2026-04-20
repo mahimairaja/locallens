@@ -25,12 +25,27 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Python tooling
         run: |
-          pip install --upgrade pip
-          pip install -e ".[test]"
+          pip install --upgrade pip maturin coverage
           pip install -r backend/requirements.txt
-          pip install coverage
+
+      - name: Build Rust extension + install package (editable, with test extras)
+        run: maturin develop --release --extras test
 
       - name: Wait for Qdrant to be ready
         run: |

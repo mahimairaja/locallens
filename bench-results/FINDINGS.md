@@ -248,4 +248,62 @@ a Rust port of BM25 would save ~50-150 ms end-to-end at typical corpus sizes
 — well under the ~500 ms floor set by embedding + Qdrant. Revisit only if a
 user reports pain on a corpus much larger than we've measured here.
 
+---
+
+## Post-Rust results (plan 3)
+
+A Rust PyO3 port of `_Bm25Index` landed (`src/bm25.rs`,
+`locallens._locallens_rs.RustBM25`). The Python wrapper in
+`locallens/bm25.py` prefers `RustBM25` when
+`locallens._rust.HAS_RUST_BM25` is True; otherwise it falls back to the
+pure-Python `_Bm25Index` transparently. On-disk JSON format is identical,
+so users can switch wheels without migration.
+
+Same synthetic corpus + seeded RNG. Bench outputs:
+`bench_200_rust.json`, `bench_500_rust.json`.
+
+### 200 files / 1,485 chunks
+
+| stage                       | pre-fix   | python post-fix | rust    | rust vs python |
+| --------------------------- | --------- | --------------- | ------- | -------------- |
+| bm25 build-from-scratch     | 115 ms    | 66 ms           | 69 ms   | ~1.0 ×         |
+| **bm25 incremental + flush** | **10,520 ms** | **54 ms**   | **42 ms** | **1.3 ×** |
+| **bm25 search (×14 queries)** | 27 ms  | **8 ms**        | **2.9 ms** | **2.8 ×** |
+
+### 500 files / 3,779 chunks
+
+| stage                       | pre-fix   | python post-fix | rust    | rust vs python |
+| --------------------------- | --------- | --------------- | ------- | -------------- |
+| bm25 build-from-scratch     | 292 ms    | 176 ms          | 182 ms  | ~1.0 ×         |
+| **bm25 incremental + flush** | **67,699 ms** | **151 ms** | **114 ms** | **1.3 ×** |
+| **bm25 search (×14 queries)** | 72 ms  | **32 ms**       | **10 ms** | **3.2 ×**  |
+
+### What moved, what didn't
+
+- **Search is the real Rust win: ~3×.** The per-token / per-doc scoring loop
+  is where Python interpreter overhead dominated. Rust's tight `for i in 0..n`
+  with direct `HashMap::get` reduces per-chunk cost from a Python dispatch to
+  a native call.
+- **Incremental is 1.3×.** The hot inner work (tokenize, update `df`) is
+  modest; the remaining cost is the trailing `flush()` JSON write, which
+  is identical in both implementations (we deliberately kept the same wire
+  format).
+- **Build-from-scratch is a wash (~1.0×).** Dominated by the JSON write
+  again, plus the one-off corpus tokenize which Python already did in
+  C-implemented `re.findall`.
+
+### Total end-to-end impact
+
+At 500 files the Rust cutover saves ~60 ms on `bm25_incremental` + ~22 ms
+on `bm25_search`. End-to-end indexing drops from 0.50 s to 0.44 s (~12 %).
+Search latency drops from ~2 ms/query to ~0.7 ms/query — user-noticeable
+on tight interactive loops.
+
+### Fallback still covers everyone
+
+If `HAS_RUST_BM25` is False (sdist install without rustc; unsupported
+platform), the Python post-fix path is used. Tests `test_rust_reads_python_json`
+and `test_python_reads_rust_json` verify on-disk cross-compatibility so
+switching install modes never requires a reindex.
+
 

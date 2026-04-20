@@ -1,6 +1,6 @@
 [project]
 name = "locallens"
-dynamic = ["version"]
+version = "0.1.0"
 description = "Semantic file search engine for AI agents. 100% offline."
 readme = "README.md"
 license = "MIT"
@@ -118,31 +118,19 @@ Repository = "https://github.com/mahimairaja/locallens"
 Issues = "https://github.com/mahimairaja/locallens/issues"
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
-# CUTOVER: when src/lib.rs lands, replace the [build-system] block above with:
-#
-#   [build-system]
-#   requires = ["maturin>=1.7,<2.0"]
-#   build-backend = "maturin"
-#
-#   [tool.maturin]
-#   module-name = "locallens._locallens_rs"
-#   features = ["pyo3/extension-module", "pyo3/abi3-py311"]
-#   python-source = "."
-#   strip = true
-#
-# Also flip `.github/workflows/wheels.yml` `release: published` trigger on,
-# drop `continue-on-error` from the `wheels` job, and delete
-# `.github/workflows/publish.yml`. See CONTRIBUTING.md section
-# "Working on the Rust extension (future)" for the contributor-facing rollout.
-
-[tool.hatch.version]
-source = "vcs"
-
-[tool.hatch.build.hooks.vcs]
-version-file = "locallens/_version.py"
+[tool.maturin]
+module-name = "locallens._locallens_rs"
+features = ["pyo3/extension-module", "pyo3/abi3-py311"]
+python-source = "."
+strip = true
+# The sdist ships Cargo.toml + src/ so a user without prebuilt wheels can
+# build from source via `pip install --no-binary :all: locallens` when they
+# have a Rust toolchain. Platforms without rustc should prefer the prebuilt
+# wheels (abi3-py311 covers Python 3.11-3.13 on our release matrix).
+include = ["Cargo.toml", "src/**/*.rs"]
 
 [tool.pyright]
 typeCheckingMode = "off"
