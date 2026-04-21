@@ -5,7 +5,7 @@ Skipped when the Rust extension is not available.
 
 import pytest
 
-from locallens._rust import HAS_RUST_CHUNKER
+from locallens._internals._rust import HAS_RUST_CHUNKER
 
 pytestmark = pytest.mark.skipif(
     not HAS_RUST_CHUNKER, reason="Rust chunker not available"
@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(
 
 def _python_chunk_text(text: str, size: int, overlap: int, file_type: str) -> list[str]:
     """Call the Python chunker by temporarily disabling the Rust dispatch."""
-    import locallens.chunker as mod
+    import locallens.pipeline.chunker as mod
 
     original = mod.HAS_RUST_CHUNKER
     try:

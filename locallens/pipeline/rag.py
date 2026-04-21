@@ -6,7 +6,7 @@ import httpx
 from rich.console import Console
 
 from locallens.config import OLLAMA_BASE_URL, OLLAMA_MODEL, RAG_TOP_K
-from locallens.embedder import embed_query
+from locallens.pipeline.embedder import embed_query
 
 console = Console()
 

@@ -15,14 +15,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from locallens._rust import HAS_RUST_BM25
+from locallens._internals._rust import HAS_RUST_BM25
 
 if HAS_RUST_BM25:
     from locallens._locallens_rs import (
         RustBM25 as _IndexImpl,  # type: ignore[attr-defined]
     )
 else:
-    from locallens._bm25_core import (
+    from locallens._internals._bm25_core import (
         _Bm25Index as _IndexImpl,  # type: ignore[assignment]
     )
 

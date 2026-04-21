@@ -154,7 +154,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["F401", "F811"]
-"locallens/voice.py" = ["B023"]
+"locallens/integrations/voice.py" = ["B023"]
 "locallens/fast.py" = ["F401", "I001"]
 
 [tool.mypy]

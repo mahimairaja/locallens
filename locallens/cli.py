@@ -44,7 +44,7 @@ def sync_pull(
     ),
 ) -> None:
     """Pull a shard snapshot from the remote Qdrant server into the local shard."""
-    from locallens import sync
+    from locallens.integrations import sync
 
     try:
         if incremental:
@@ -67,8 +67,8 @@ def sync_push(
     """Push every locally indexed point to the remote Qdrant server."""
     from qdrant_edge import ScrollRequest
 
-    from locallens import store as st
-    from locallens import sync
+    from locallens.integrations import sync
+    from locallens.pipeline import store as st
 
     st.init()
     shard = st.get_shard()
@@ -248,7 +248,7 @@ def voice(
 ) -> None:
     """Start the voice interface -- speak to search your files."""
     try:
-        from locallens.voice import start_voice_loop
+        from locallens.integrations.voice import start_voice_loop
     except ImportError:
         console.print(
             "[red]Voice dependencies not installed.[/red]\n"
@@ -256,8 +256,8 @@ def voice(
         )
         raise typer.Exit(code=1)
 
-    from locallens import store as st
-    from locallens.embedder import embed_query
+    from locallens.pipeline import store as st
+    from locallens.pipeline.embedder import embed_query
 
     st.init()
     start_voice_loop(st, embed_query)
@@ -283,8 +283,8 @@ def watch(
         console.print(f"[red]Error: '{folder_path}' is not a valid directory.[/red]")
         raise typer.Exit(code=1)
 
-    from locallens import store as st
     from locallens.config import SUPPORTED_EXTENSIONS
+    from locallens.pipeline import store as st
 
     st.init()
 
@@ -321,7 +321,7 @@ def watch(
             self.events += 1
             console.print(f"[cyan]{event_type}:[/cyan] {path.name} -- re-indexing...")
             try:
-                from locallens.indexer import index_folder
+                from locallens.pipeline.indexer import index_folder
 
                 index_folder(path.parent, force=False)
             except Exception as exc:
@@ -367,7 +367,7 @@ def stats(
         print(json.dumps(result.to_dict(), indent=2))
         return
 
-    from locallens import store as st
+    from locallens.pipeline import store as st
 
     st.init()
     total_chunks = st.count()
@@ -453,7 +453,7 @@ def doctor(
 
     # 1. Qdrant Edge (local shard)
     try:
-        from locallens import store as st
+        from locallens.pipeline import store as st
 
         st.init()
         count = st.count()
@@ -561,7 +561,7 @@ def doctor(
         table.add_row("Disk Space", PASS, f"{free_gb:.1f} GB free")
 
     # 8. Rust extensions
-    from locallens._rust import rust_modules_status
+    from locallens._internals._rust import rust_modules_status
 
     available, modules = rust_modules_status()
     if available:
@@ -575,7 +575,7 @@ def doctor(
 
     # 9. Schema version
     try:
-        from locallens.schema import get_schema
+        from locallens.pipeline.schema import get_schema
 
         schema = get_schema(COLLECTION_NAME)
         if schema:
@@ -637,7 +637,7 @@ def serve_default(
     """Start a LocalLens server."""
     if mcp:
         try:
-            from locallens.mcp_server import main as mcp_main
+            from locallens.serve.mcp_server import main as mcp_main
         except ImportError:
             console.print(
                 "[red]MCP dependencies not installed.[/red]\n"
@@ -647,7 +647,7 @@ def serve_default(
         mcp_main(port=port or 8811)
     elif api:
         try:
-            from locallens.dashboard import start_api
+            from locallens.serve.dashboard import start_api
         except ImportError:
             console.print(
                 "[red]Server dependencies not installed.[/red]\n"
@@ -657,7 +657,7 @@ def serve_default(
         start_api(port=port or 8000)
     elif ui:
         try:
-            from locallens.dashboard import start_dashboard
+            from locallens.serve.dashboard import start_dashboard
         except ImportError:
             console.print(
                 "[red]Server dependencies not installed.[/red]\n"
@@ -686,7 +686,7 @@ def schema_show(
     ),
 ) -> None:
     """Print the current schema for a collection."""
-    from locallens.schema import get_schema
+    from locallens.pipeline.schema import get_schema
 
     schema = get_schema(collection)
     if schema is None:
@@ -712,7 +712,7 @@ def schema_history(
     ),
 ) -> None:
     """Print all schema versions for a collection."""
-    from locallens.schema import get_schema
+    from locallens.pipeline.schema import get_schema
 
     schema = get_schema(collection)
     if schema is None:

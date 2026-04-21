@@ -81,21 +81,43 @@ Hooks: trailing-whitespace, end-of-file-fixer, check-toml, check-yaml, check-add
 ### Code structure
 
 ```
-locallens/          Python library and CLI
-backend/            FastAPI web backend
-frontend/           React web app
-rust/               Rust workspace (performance extensions)
-  rust/core/        Shared types
-  rust/bm25/        BM25 index and query
-  rust/chunker/     Language-aware text chunking
-  rust/walker/      Parallel file walking
-  rust/watcher/     File system watching
-  rust/bridge/      PyO3 Python bindings
-tests/              Python test suite
-benchmarks/         Performance benchmarks and findings
-docs/               VitePress documentation site
-scripts/            Utility scripts
-assets/             Logo and demo GIF
+locallens/
+  engine.py           LocalLens class (public API)
+  cli.py              Typer CLI entry point
+  config.py           Configuration
+  models.py           Shared dataclasses
+  fast.py             Rust/Python fallback dispatcher
+  pipeline/           Core search pipeline
+    store.py          Qdrant operations
+    indexer.py        File indexing
+    searcher.py       Search (semantic + hybrid)
+    embedder.py       Embeddings
+    chunker.py        Text chunking
+    bm25.py           BM25 keyword index
+    rag.py            RAG with Ollama
+    schema.py         Schema versioning
+  extractors/         File type extractors
+  serve/              Server modes
+    mcp_server.py     MCP server for agents
+    dashboard.py      Web dashboard
+  integrations/       Optional features
+    voice.py          Voice I/O
+    sync.py           Qdrant sync
+  _internals/         Rust bindings (private)
+backend/              FastAPI web backend
+frontend/             React web app
+rust/                 Rust workspace (performance extensions)
+  core/               Shared types
+  bm25/               BM25 index and query
+  chunker/            Language-aware text chunking
+  walker/             Parallel file walking
+  watcher/            File system watching
+  bridge/             PyO3 Python bindings
+tests/                Python test suite
+benchmarks/           Performance benchmarks and findings
+docs/                 VitePress documentation site
+scripts/              Utility scripts
+assets/               Logo and demo GIF
 ```
 
 ### Key concepts

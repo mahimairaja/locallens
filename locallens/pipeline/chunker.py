@@ -12,7 +12,7 @@ Adaptive chunking rules:
 
 import re
 
-from locallens._rust import HAS_RUST_CHUNKER
+from locallens._internals._rust import HAS_RUST_CHUNKER
 
 if HAS_RUST_CHUNKER:
     from locallens._locallens_rs import (  # type: ignore[import-not-found]

@@ -12,7 +12,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from locallens._rust import HAS_RUST_WATCHER
+from locallens._internals._rust import HAS_RUST_WATCHER
 
 if HAS_RUST_WATCHER:
     from locallens._locallens_rs import RustWatcher  # type: ignore[import-not-found]

@@ -14,10 +14,10 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from locallens import bm25, store
-from locallens._file_core import hash_file as _file_hash  # re-export for tests
-from locallens._file_core import walk_and_hash
-from locallens.chunker import chunk_text
+from locallens._internals._file_core import (
+    hash_file as _file_hash,  # re-export for tests
+)
+from locallens._internals._file_core import walk_and_hash
 from locallens.config import (
     CHUNK_OVERLAP,
     CHUNK_SIZE,
@@ -26,8 +26,10 @@ from locallens.config import (
     SKIP_HIDDEN,
     SUPPORTED_EXTENSIONS,
 )
-from locallens.embedder import embed_texts
 from locallens.extractors import get_extractor
+from locallens.pipeline import bm25, store
+from locallens.pipeline.chunker import chunk_text
+from locallens.pipeline.embedder import embed_texts
 
 console = Console()
 
@@ -206,7 +208,7 @@ def index_folder(folder: Path, force: bool = False) -> None:
 
     # Flush push-sync queue at the end of indexing.
     if sync_queue:
-        from locallens import sync as _sync
+        from locallens.integrations import sync as _sync
 
         try:
             pushed = _sync.push(sync_queue)

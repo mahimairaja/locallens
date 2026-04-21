@@ -53,7 +53,7 @@ def bench_bm25(corpus: list[tuple[str, str]], queries: list[str]) -> dict[str, f
     results: dict[str, float] = {}
 
     # Python BM25
-    from locallens._bm25_core import _Bm25Index
+    from locallens._internals._bm25_core import _Bm25Index
 
     idx = _Bm25Index(Path(tempfile.mktemp(suffix=".json")))
     t0 = time.perf_counter()
@@ -92,7 +92,7 @@ def bench_chunking(corpus: list[tuple[str, str]]) -> dict[str, float]:
     texts = [(text, ".md") for _, text in corpus[:1000]]
 
     # Python chunker
-    from locallens.chunker import _chunk_markdown
+    from locallens.pipeline.chunker import _chunk_markdown
 
     t0 = time.perf_counter()
     for text, _ in texts:

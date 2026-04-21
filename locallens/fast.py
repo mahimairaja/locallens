@@ -29,7 +29,7 @@ if _rust_ok:
     BM25Index = _lc.BM25Index
     RUST_AVAILABLE = True
 else:
-    from locallens._bm25_core import _Bm25Index as BM25Index  # type: ignore[assignment] # noqa: F401
+    from locallens._internals._bm25_core import _Bm25Index as BM25Index  # type: ignore[assignment] # noqa: F401
 
 # ── Chunker ─────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ if _rust_ok:
     supported_languages = _lc.supported_languages
     RUST_AVAILABLE = True
 else:
-    from locallens.chunker import chunk_text  # type: ignore[assignment] # noqa: F401
+    from locallens.pipeline.chunker import chunk_text  # type: ignore[assignment] # noqa: F401
 
     def chunk_structured(  # type: ignore[misc]
         text: str,
@@ -50,7 +50,7 @@ else:
         min_size: int = 100,
     ) -> list[dict[str, Any]]:
         """Fallback: delegates to chunk_text with file_type dispatch."""
-        from locallens.chunker import chunk_text as _chunk
+        from locallens.pipeline.chunker import chunk_text as _chunk
 
         chunks = _chunk(text, max_size, overlap, file_type)
         offset = 0
@@ -99,7 +99,7 @@ if _rust_ok:
     RUST_AVAILABLE = True
 else:
     try:
-        from locallens._watcher import FileWatcher  # type: ignore[assignment] # noqa: F401
+        from locallens._internals._watcher import FileWatcher  # type: ignore[assignment] # noqa: F401
     except ImportError:
         FileWatcher = None  # type: ignore[assignment,misc]
 

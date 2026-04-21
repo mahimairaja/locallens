@@ -94,8 +94,8 @@ def start_voice_loop(store, embed_query_fn) -> None:
 
     console.print("[green]Models loaded. Listening...[/green]\n")
 
-    from locallens.rag import ask as do_ask
-    from locallens.searcher import search as do_search
+    from locallens.pipeline.rag import ask as do_ask
+    from locallens.pipeline.searcher import search as do_search
 
     try:
         while True:

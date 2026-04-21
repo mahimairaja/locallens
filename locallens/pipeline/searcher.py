@@ -1,7 +1,7 @@
 """Semantic search against the Qdrant Edge shard."""
 
-from locallens import store
-from locallens.embedder import embed_query
+from locallens.pipeline import store
+from locallens.pipeline.embedder import embed_query
 
 
 def search(

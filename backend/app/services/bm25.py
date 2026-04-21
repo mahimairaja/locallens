@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from locallens._rust import HAS_RUST_BM25
+from locallens._internals._rust import HAS_RUST_BM25
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ if HAS_RUST_BM25:
         # side of the call). The fallback branch passes logger to _Bm25Index.
         return RustBM25(path)
 else:
-    from locallens._bm25_core import _Bm25Index
+    from locallens._internals._bm25_core import _Bm25Index
 
     def _make_index(path: Path) -> object:
         return _Bm25Index(path, logger=logger)

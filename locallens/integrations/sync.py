@@ -177,7 +177,7 @@ def pull_partial() -> None:
     ``snapshot_manifest()``, sends it to the server's partial-snapshot
     endpoint, then applies the returned delta via ``update_from_snapshot``.
     """
-    from locallens import store as st
+    from locallens.pipeline import store as st
 
     url = _require_sync_url()
     shard = st.get_shard()

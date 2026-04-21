@@ -29,7 +29,7 @@ import os
 from pathlib import Path
 from typing import NamedTuple
 
-from locallens._rust import HAS_RUST_WALKER
+from locallens._internals._rust import HAS_RUST_WALKER
 
 
 class FileEntry(NamedTuple):

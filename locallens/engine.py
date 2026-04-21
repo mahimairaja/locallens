@@ -70,7 +70,7 @@ class LocalLens:
     def _init_store(self) -> None:
         if self._store_initialized:
             return
-        from locallens import store
+        from locallens.pipeline import store
 
         store.init()
         self._store_module = store
@@ -78,7 +78,7 @@ class LocalLens:
 
         # Schema migration check
         try:
-            from locallens.schema import check_and_migrate
+            from locallens.pipeline.schema import check_and_migrate
 
             check_and_migrate(self._collection_name)
         except Exception:
@@ -92,7 +92,7 @@ class LocalLens:
         self,
     ) -> tuple[Callable[..., list[float]], Callable[..., list[list[float]]]]:
         if self._embed_query_fn is None:
-            from locallens.embedder import embed_query, embed_texts
+            from locallens.pipeline.embedder import embed_query, embed_texts
 
             self._embed_query_fn = embed_query
             self._embed_texts_fn = embed_texts
@@ -100,7 +100,7 @@ class LocalLens:
         return self._embed_query_fn, self._embed_texts_fn
 
     def _get_bm25(self) -> Any:
-        from locallens import bm25
+        from locallens.pipeline import bm25
 
         bm25.load()
         return bm25
@@ -127,7 +127,7 @@ class LocalLens:
 
         store = self._get_store()
 
-        from locallens.indexer import index_folder
+        from locallens.pipeline.indexer import index_folder
 
         start = time.time()
         index_folder(self._path, force=force)
@@ -285,7 +285,7 @@ class LocalLens:
         """
         store = self._get_store()
 
-        from locallens.rag import ask as rag_ask
+        from locallens.pipeline.rag import ask as rag_ask
 
         # Collect source info before streaming
         embed_query, _ = self._get_embedder()
@@ -439,7 +439,7 @@ class LocalLens:
             checks.append(DoctorCheck("Disk Space", "warn", "Could not check"))
 
         # 7. Rust extensions
-        from locallens._rust import rust_modules_status
+        from locallens._internals._rust import rust_modules_status
 
         available, modules = rust_modules_status()
         if available:
@@ -457,7 +457,7 @@ class LocalLens:
 
         # 8. Schema version
         try:
-            from locallens.schema import get_schema
+            from locallens.pipeline.schema import get_schema
 
             schema = get_schema(self._collection_name)
             if schema:

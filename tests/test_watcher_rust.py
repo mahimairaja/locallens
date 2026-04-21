@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from locallens._rust import HAS_RUST_WATCHER
+from locallens._internals._rust import HAS_RUST_WATCHER
 
 pytestmark = pytest.mark.skipif(
     not HAS_RUST_WATCHER, reason="Rust watcher not available"
@@ -104,7 +104,7 @@ class TestFileWatcherWrapper:
     """Test the unified FileWatcher from locallens/_watcher.py."""
 
     def test_context_manager(self):
-        from locallens._watcher import FileWatcher
+        from locallens._internals._watcher import FileWatcher
 
         with tempfile.TemporaryDirectory() as d:
             with FileWatcher([d], debounce_ms=100) as w:
@@ -115,7 +115,7 @@ class TestFileWatcherWrapper:
                 assert isinstance(events, list)
 
     def test_backend_is_rust(self):
-        from locallens._watcher import FileWatcher
+        from locallens._internals._watcher import FileWatcher
 
         with tempfile.TemporaryDirectory() as d:
             with FileWatcher([d]) as w:
