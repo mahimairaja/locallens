@@ -12,6 +12,13 @@ Adaptive chunking rules:
 
 import re
 
+from locallens._rust import HAS_RUST_CHUNKER
+
+if HAS_RUST_CHUNKER:
+    from locallens._locallens_rs import (  # type: ignore[import-not-found]
+        chunk_text as _rust_chunk_text,
+    )
+
 MAX_CHUNK = 1000
 MIN_CHUNK = 100
 OVERLAP = 50
@@ -23,6 +30,7 @@ _CODE_BOUNDARY_RE = re.compile(
     re.MULTILINE,
 )
 _PARAGRAPH_RE = re.compile(r"\n\s*\n")
+_SHEET_RE = re.compile(r"(?=^Sheet: )", re.MULTILINE)
 
 
 def _subdivide(text: str, max_size: int, overlap: int) -> list[str]:
@@ -87,6 +95,10 @@ def chunk_text(
         return []
 
     ft = file_type.lower()
+
+    if HAS_RUST_CHUNKER:
+        result: list[str] = _rust_chunk_text(text, size, overlap, ft)
+        return result
 
     if ft in (".md", ".txt"):
         return _chunk_markdown(text, size, overlap)
@@ -168,7 +180,7 @@ def _chunk_paragraphs(text: str, size: int, overlap: int) -> list[str]:
 
 def _chunk_spreadsheet(text: str, size: int, overlap: int) -> list[str]:
     """Each sheet is one chunk unless >1000 chars, then split by row groups."""
-    sheet_blocks = re.split(r"(?=^Sheet: )", text, flags=re.MULTILINE)
+    sheet_blocks = _SHEET_RE.split(text)
     chunks = []
     for block in sheet_blocks:
         block = block.strip()

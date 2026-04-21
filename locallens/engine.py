@@ -430,6 +430,23 @@ class LocalLens:
         except Exception:
             checks.append(DoctorCheck("Disk Space", "warn", "Could not check"))
 
+        # 7. Rust extensions
+        from locallens._rust import rust_modules_status
+
+        available, modules = rust_modules_status()
+        if available:
+            checks.append(
+                DoctorCheck("Rust Extensions", "ok", f"Active: {', '.join(modules)}")
+            )
+        else:
+            checks.append(
+                DoctorCheck(
+                    "Rust Extensions",
+                    "warn",
+                    "Not available (pure-Python fallback)",
+                )
+            )
+
         return checks
 
     # ── internal helpers ─────────────────────────────────────────────

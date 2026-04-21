@@ -560,6 +560,19 @@ def doctor(
     else:
         table.add_row("Disk Space", PASS, f"{free_gb:.1f} GB free")
 
+    # 8. Rust extensions
+    from locallens._rust import rust_modules_status
+
+    available, modules = rust_modules_status()
+    if available:
+        table.add_row("Rust Extensions", PASS, f"Active: {', '.join(modules)}")
+    else:
+        table.add_row(
+            "Rust Extensions",
+            "[yellow]-[/yellow]",
+            "Not available (pure-Python fallback)",
+        )
+
     console.print()
     console.print(table)
     console.print()

@@ -1,7 +1,10 @@
-.PHONY: setup dev stop test test-quick lint clean docs docs-build
+.PHONY: all setup dev stop test test-quick lint clean docs docs-build rust-dev rust-build rust-test bench
 
 VENV := .venv
 UVICORN := $(VENV)/bin/uvicorn
+PYTHON := $(shell test -x $(VENV)/bin/python && echo $(VENV)/bin/python || echo python3)
+
+all: setup
 
 setup:
 	docker compose up -d qdrant
@@ -37,6 +40,18 @@ docs:
 
 docs-build:
 	cd docs && npm run docs:build
+
+rust-dev:
+	maturin develop --release
+
+rust-build:
+	maturin build --release
+
+rust-test:
+	cargo test
+
+bench:
+	$(PYTHON) scripts/bench_pipeline.py --files 200 --mock-embed
 
 clean:
 	@echo "Removing caches and build artifacts..."

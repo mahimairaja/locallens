@@ -8,8 +8,9 @@ re-exports:
 
 - ``HAS_RUST`` — True iff the extension imports at all.
 - ``HAS_RUST_BM25`` — True iff the extension advertises the BM25 class.
-- ``HAS_RUST_CHUNKER``, ``HAS_RUST_WALKER`` — reserved for future modules
-  (always False today).
+- ``HAS_RUST_CHUNKER`` — True iff the extension has the chunk_text function.
+- ``HAS_RUST_WALKER`` — True iff the extension has the RustWalker class.
+- ``HAS_RUST_WATCHER`` — True iff the extension has the RustWatcher class.
 
 Install layout: maturin with ``module-name = "locallens._locallens_rs"``
 installs the compiled extension inside the package, reachable as
@@ -36,6 +37,7 @@ HAS_RUST: bool = False
 HAS_RUST_BM25: bool = False
 HAS_RUST_CHUNKER: bool = False
 HAS_RUST_WALKER: bool = False
+HAS_RUST_WATCHER: bool = False
 
 
 def _import_extension() -> ModuleType | None:
@@ -61,6 +63,7 @@ if _ext is not None:
     HAS_RUST_BM25 = bool(getattr(_ext, "HAS_BM25", False))
     HAS_RUST_CHUNKER = bool(getattr(_ext, "HAS_CHUNKER", False))
     HAS_RUST_WALKER = bool(getattr(_ext, "HAS_WALKER", False))
+    HAS_RUST_WATCHER = bool(getattr(_ext, "HAS_WATCHER", False))
 
 
 def has_rust_extension() -> bool:
@@ -68,7 +71,24 @@ def has_rust_extension() -> bool:
 
     Callers that want finer-grained capability detection should read the
     module-level ``HAS_RUST_BM25`` / ``HAS_RUST_CHUNKER`` / ``HAS_RUST_WALKER``
-    constants directly — a single extension may ship subsets of the modules
-    during the rollout.
+    / ``HAS_RUST_WATCHER`` constants directly — a single extension may ship
+    subsets of the modules during the rollout.
     """
     return HAS_RUST
+
+
+def rust_modules_status() -> tuple[bool, list[str]]:
+    """Return ``(is_available, active_module_names)`` for doctor output."""
+    if not HAS_RUST:
+        return False, []
+    modules = [
+        name
+        for name, flag in [
+            ("BM25", HAS_RUST_BM25),
+            ("Chunker", HAS_RUST_CHUNKER),
+            ("Walker", HAS_RUST_WALKER),
+            ("Watcher", HAS_RUST_WATCHER),
+        ]
+        if flag
+    ]
+    return True, modules
