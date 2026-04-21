@@ -10,8 +10,9 @@ build/
 .eggs/
 *.whl
 
-# hatch-vcs generated
-locallens/_version.py
+# Rust / maturin / cibuildwheel build artefacts
+target/
+wheelhouse/
 
 # Virtual environments
 .venv/
@@ -127,7 +128,6 @@ docs/_build/
 
 # PyBuilder
 .pybuilder/
-target/
 
 # Jupyter Notebook
 .ipynb_checkpoints

@@ -25,12 +25,28 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Python tooling (creates .venv so maturin-develop works)
         run: |
-          pip install --upgrade pip
-          pip install -e ".[test]"
-          pip install -r backend/requirements.txt
-          pip install coverage
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip maturin coverage
+          .venv/bin/pip install -r backend/requirements.txt
+
+      - name: Build Rust extension + install package (editable, with test extras)
+        run: .venv/bin/maturin develop --release --extras test
 
       - name: Wait for Qdrant to be ready
         run: |
@@ -44,9 +60,9 @@ jobs:
         env:
           QDRANT_TEST_URL: http://localhost:6333
         run: |
-          coverage run -m pytest tests/ -v --tb=short -m "not slow"
-          coverage xml
-          coverage report
+          .venv/bin/coverage run -m pytest tests/ -v --tb=short -m "not slow"
+          .venv/bin/coverage xml
+          .venv/bin/coverage report
 
       - name: Upload coverage to Codecov
         if: always()

@@ -1,6 +1,5 @@
 """File indexer: walk folder, extract, chunk, embed, upsert into Qdrant Edge."""
 
-import hashlib
 import time
 import uuid
 from datetime import UTC, datetime
@@ -16,6 +15,8 @@ from rich.progress import (
 )
 
 from locallens import bm25, store
+from locallens._file_core import hash_file as _file_hash  # re-export for tests
+from locallens._file_core import walk_and_hash
 from locallens.chunker import chunk_text
 from locallens.config import (
     CHUNK_OVERLAP,
@@ -32,19 +33,7 @@ console = Console()
 
 UUID_NAMESPACE = uuid.UUID("d1b4c5e8-7f3a-4e2b-9a1c-6d8e0f2b3c4a")
 
-
-def _is_hidden(path: Path) -> bool:
-    """Check if any component of the path starts with a dot."""
-    return any(part.startswith(".") for part in path.parts)
-
-
-def _file_hash(file_path: Path) -> str:
-    """Compute SHA-256 hash of file content."""
-    h = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for block in iter(lambda: f.read(8192), b""):
-            h.update(block)
-    return h.hexdigest()
+__all__ = ["index_folder", "_file_hash"]
 
 
 def _point_id(file_path: str, chunk_index: int) -> str:
@@ -91,21 +80,15 @@ def index_folder(folder: Path, force: bool = False) -> None:
     """
     store.init()
 
-    # Collect files to process
-    all_files: list[Path] = []
-    for file_path in sorted(folder.rglob("*")):
-        if not file_path.is_file():
-            continue
-        if SKIP_HIDDEN and _is_hidden(file_path.relative_to(folder)):
-            continue
-        if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            continue
-        if file_path.stat().st_size > MAX_FILE_SIZE_MB * 1024 * 1024:
-            console.print(
-                f"[yellow]Skipping (>{MAX_FILE_SIZE_MB}MB): {file_path}[/yellow]"
-            )
-            continue
-        all_files.append(file_path)
+    # Walk + hash in one pass — in Rust with parallel SHA-256 when
+    # HAS_RUST_WALKER is True, otherwise pure-Python (same byte-for-byte
+    # output). See locallens/_file_core.py.
+    entries = walk_and_hash(
+        folder,
+        frozenset(SUPPORTED_EXTENSIONS),
+        max_file_size_bytes=MAX_FILE_SIZE_MB * 1024 * 1024,
+        skip_hidden=SKIP_HIDDEN,
+    )
 
     indexed_files = 0
     total_chunks = 0
@@ -124,25 +107,12 @@ def index_folder(folder: Path, force: bool = False) -> None:
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task("Indexing files", total=len(all_files))
+        task = progress.add_task("Indexing files", total=len(entries))
 
-        for file_path in all_files:
+        for entry in entries:
+            file_path = entry.path
+            fhash = entry.sha256
             progress.update(task, description=f"Indexing {file_path.name}")
-
-            try:
-                fhash = _file_hash(file_path)
-            except PermissionError:
-                console.print(
-                    f"[yellow]Warning: Permission denied: {file_path}[/yellow]"
-                )
-                progress.advance(task)
-                continue
-            except Exception as exc:
-                console.print(
-                    f"[yellow]Warning: Could not read {file_path}: {exc}[/yellow]"
-                )
-                progress.advance(task)
-                continue
 
             # O(1) dedup via the file_hash payload index.
             if not force and store.has_hash(fhash):
