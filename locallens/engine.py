@@ -78,9 +78,14 @@ class LocalLens:
 
         # Schema migration check
         try:
-            from locallens.pipeline.schema import check_and_migrate
+            from locallens.pipeline.schema import (
+                SchemaBreakingChange,
+                check_and_migrate,
+            )
 
             check_and_migrate(self._collection_name)
+        except SchemaBreakingChange:
+            raise
         except Exception:
             pass  # Non-fatal: schema tracking is best-effort
 

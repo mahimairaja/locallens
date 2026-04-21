@@ -45,10 +45,6 @@ impl ChunkResult {
         )
     }
 
-    fn to_dict(&self) -> std::collections::HashMap<&str, pyo3::PyObject> {
-        // Not needed - PyO3 auto-exposes get fields
-        std::collections::HashMap::new()
-    }
 }
 
 #[derive(Clone, Debug)]

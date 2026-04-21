@@ -152,7 +152,7 @@ Both trees have near-duplicate pipeline modules (`indexer.py`, `extractors/`, `e
 - **Hybrid:** both combined via Reciprocal Rank Fusion (RRF, k=60)
 
 ### BM25 implementation
-`locallens/bm25.py` loads from a Rust extension (`locallens/_rust.py`) or falls back to pure-Python (`locallens/_bm25_core.py`). The Rust crate is built via maturin (see `Cargo.toml`, `src/`). Uses O(N) incremental indexing with running counters.
+`locallens/pipeline/bm25.py` loads from the Rust extension (`locallens_core`) or falls back to pure-Python (`locallens/_internals/_bm25_core.py`). The Rust workspace is under `rust/` (6 crates). Uses O(N) incremental indexing with running counters.
 
 ### Deterministic point IDs and dedup
 Point IDs are `uuid5(UUID_NAMESPACE, f"{abs_file_path}:{chunk_index}")` using the namespace `d1b4c5e8-7f3a-4e2b-9a1c-6d8e0f2b3c4a` (identical in both trees, do not change it). Dedup is O(1) per file via a filtered `count` query against the `file_hash` keyword payload index. `--force` bypasses the check.
@@ -197,7 +197,7 @@ Four GitHub Actions workflows under `.github/workflows/`:
 
 ## Build System
 
-The project uses **maturin** as its build backend (not hatchling). The Rust extension (`src/`) provides an optimized BM25 implementation. Python 3.11+ required (abi3-py311). Build with `maturin develop` for local dev or let CI handle wheel builds.
+The Python package uses **hatchling** as its build backend. The optional Rust extensions live in `rust/` as a separate maturin-built package (`locallens-core`). Build Rust locally with `cd rust && maturin develop --release`. Pre-built wheels are published to PyPI on release. Install via `pip install "locallens[fast]"`.
 
 ## pyproject.toml extras
 

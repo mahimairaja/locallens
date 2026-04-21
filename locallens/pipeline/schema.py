@@ -61,7 +61,15 @@ def _load_all() -> dict[str, CollectionSchema]:
 def _save_all(schemas: dict[str, CollectionSchema]) -> None:
     _SCHEMA_FILE.parent.mkdir(parents=True, exist_ok=True)
     payload = {name: cs.to_dict() for name, cs in schemas.items()}
-    _SCHEMA_FILE.write_text(json.dumps(payload, indent=2, default=str))
+    tmp = _SCHEMA_FILE.with_suffix(".tmp")
+    data = json.dumps(payload, indent=2, default=str)
+    with open(tmp, "w") as f:
+        f.write(data)
+        f.flush()
+        import os
+
+        os.fsync(f.fileno())
+    os.replace(tmp, _SCHEMA_FILE)
 
 
 def get_schema(collection_name: str) -> CollectionSchema | None:
@@ -146,29 +154,38 @@ def check_and_migrate(collection_name: str = "locallens") -> SchemaVersion:
             f"Re-index required. Run: locallens index --force <folder>"
         )
 
-    # Check for additive changes (new fields)
+    # Check for breaking changes: removed fields or type changes
     new_fields = set(desired.payload_fields) - set(current.payload_fields)
     removed_fields = set(current.payload_fields) - set(desired.payload_fields)
+    common_fields = set(current.payload_fields) & set(desired.payload_fields)
+    type_changes = [
+        f
+        for f in common_fields
+        if current.payload_fields[f] != desired.payload_fields[f]
+    ]
 
-    if not new_fields and not removed_fields:
+    if removed_fields or type_changes:
+        details = []
+        if removed_fields:
+            details.append(f"removed fields: {sorted(removed_fields)}")
+        if type_changes:
+            details.append(f"type changes: {sorted(type_changes)}")
+        raise SchemaBreakingChange(
+            f"Schema breaking change for '{collection_name}': {', '.join(details)}. "
+            f"Re-index required. Run: locallens index --force <folder>"
+        )
+
+    if not new_fields:
         return current
 
     new_version = current.version + 1
 
-    if new_fields:
-        log.info(
-            "Schema migrated from v%d to v%d: added fields %s",
-            current.version,
-            new_version,
-            list(new_fields),
-        )
-
-    if removed_fields:
-        log.warning(
-            "Fields %s are no longer in schema but still exist in collection. "
-            "Old data retains these fields.",
-            list(removed_fields),
-        )
+    log.info(
+        "Schema migrated from v%d to v%d: added fields %s",
+        current.version,
+        new_version,
+        list(new_fields),
+    )
 
     updated = SchemaVersion(
         version=new_version,

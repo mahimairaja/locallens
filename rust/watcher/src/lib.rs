@@ -104,15 +104,17 @@ impl FileWatcher {
         self.watcher = Some(debouncer);
         self.running.store(true, Ordering::Relaxed);
 
-        // Watch each root
+        // Watch each root; clean up on failure
         if let Some(ref mut w) = self.watcher {
             for root in &self.roots {
-                w.watch(root, RecursiveMode::Recursive).map_err(|e| {
-                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                if let Err(e) = w.watch(root, RecursiveMode::Recursive) {
+                    self.running.store(false, Ordering::Relaxed);
+                    self.watcher = None;
+                    return Err(pyo3::exceptions::PyRuntimeError::new_err(format!(
                         "watch {}: {e}",
                         root.display()
-                    ))
-                })?;
+                    )));
+                }
             }
         }
 
@@ -151,8 +153,9 @@ impl FileWatcher {
             .collect()
     }
 
-    fn __enter__(&mut self) -> PyResult<()> {
-        self.start()
+    fn __enter__(mut slf: PyRefMut<'_, Self>) -> PyResult<PyRefMut<'_, Self>> {
+        slf.start()?;
+        Ok(slf)
     }
 
     #[pyo3(signature = (exc_type=None, exc_val=None, exc_tb=None))]

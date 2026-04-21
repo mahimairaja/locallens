@@ -283,7 +283,7 @@ impl BM25Index {
             .collect();
 
         Ok(Self {
-            persist_path: path,
+            persist_path: path.with_extension("json"),
             k1,
             b,
             epsilon,

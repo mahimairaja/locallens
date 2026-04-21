@@ -55,7 +55,9 @@ def bench_bm25(corpus: list[tuple[str, str]], queries: list[str]) -> dict[str, f
     # Python BM25
     from locallens._internals._bm25_core import _Bm25Index
 
-    idx = _Bm25Index(Path(tempfile.mktemp(suffix=".json")))
+    tf = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+    tf.close()
+    idx = _Bm25Index(Path(tf.name))
     t0 = time.perf_counter()
     for doc_id, text in corpus:
         idx.add_internal(doc_id, text)
@@ -70,7 +72,9 @@ def bench_bm25(corpus: list[tuple[str, str]], queries: list[str]) -> dict[str, f
     try:
         from locallens_core import BM25Index  # type: ignore[import-not-found]
 
-        ridx = BM25Index(tempfile.mktemp(suffix=".json"))
+        rtf = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        rtf.close()
+        ridx = BM25Index(rtf.name)
         t0 = time.perf_counter()
         ridx.build(corpus)
         results["rust_build_ms"] = (time.perf_counter() - t0) * 1000
@@ -103,7 +107,6 @@ def bench_chunking(corpus: list[tuple[str, str]]) -> dict[str, float]:
     try:
         from locallens_core import chunk_batch  # type: ignore[import-not-found]
 
-        items = [(t, ft, 500, 50, 100) for t, ft in texts]  # noqa: F841
         t0 = time.perf_counter()
         chunk_batch([(t, ft) for t, ft in texts], 500, 50, 100)
         results["rust_ms"] = (time.perf_counter() - t0) * 1000

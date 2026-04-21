@@ -96,10 +96,12 @@ fn tail_overlap(s: &str, n: usize) -> &str {
     if s.len() <= n {
         return s;
     }
-    let start = s.len() - n;
-    // Walk forward to the nearest char boundary then to the next space
-    let start = match s[start..].find(' ') {
-        Some(pos) => start + pos + 1,
+    // Snap to a valid char boundary
+    let raw_start = s.len() - n;
+    let safe_start = s.ceil_char_boundary(raw_start);
+    // Walk forward to the next space for a clean word boundary
+    let start = match s[safe_start..].find(' ') {
+        Some(pos) => safe_start + pos + 1,
         None => s.len(),
     };
     if start >= s.len() {
@@ -250,8 +252,8 @@ fn apply_overlap(chunks: &mut Vec<ChunkResult>, full_text: &str, overlap: usize)
     for i in 1..chunks.len() {
         let prev_end = chunks[i - 1].end_offset;
         let cur_start = chunks[i].start_offset;
-        // Only apply if there is a gap or adjacency
-        if cur_start <= prev_end || cur_start == 0 {
+        // Only skip if chunks already overlap or start at origin
+        if cur_start < prev_end || cur_start == 0 {
             continue;
         }
         let overlap_start = if cur_start >= overlap {

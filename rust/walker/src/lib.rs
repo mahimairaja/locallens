@@ -218,7 +218,7 @@ fn collect_with_walkdir(
     ext_filter: Option<&HashSet<String>>,
     out: &mut Vec<locallens_core::FileEntry>,
 ) {
-    let walker = walkdir::WalkDir::new(root).follow_links(true);
+    let walker = walkdir::WalkDir::new(root).same_file_system(true);
 
     for entry in walker.into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();

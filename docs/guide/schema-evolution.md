@@ -28,10 +28,10 @@ On startup, LocalLens compares the desired schema (defined in code) against the 
 ### Show current schema
 
 ```bash
-locallens schema --show
+locallens schema show
 ```
 
-```
+```text
 ┌──────────────────────────────────────┐
 │   Schema: locallens (v1)             │
 ├───────────────┬──────────────────────┤
@@ -50,7 +50,7 @@ locallens schema --show
 ### Show schema history
 
 ```bash
-locallens schema --history
+locallens schema history
 ```
 
 ```
@@ -68,7 +68,7 @@ locallens schema --history
 
 `locallens doctor` shows the current schema version:
 
-```
+```text
 │ Schema Version │   ✓    │ v1 (7 fields) │
 ```
 
