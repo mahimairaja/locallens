@@ -1,6 +1,5 @@
 """File indexing service: walk folder, extract, chunk, embed, upsert into Qdrant."""
 
-import hashlib
 import logging
 import time
 import uuid
@@ -14,24 +13,14 @@ from app.config import settings
 from app.extractors import get_extractor
 from app.models import IndexProgress
 from app.services import bm25, embedder, store
+from locallens._file_core import hash_file as _file_hash  # re-export
+from locallens._file_core import walk_and_hash
 
 logger = logging.getLogger(__name__)
 
 UUID_NAMESPACE = uuid.UUID("d1b4c5e8-7f3a-4e2b-9a1c-6d8e0f2b3c4a")
 
-
-def _is_hidden(path: Path) -> bool:
-    """Check if any component of the path starts with a dot."""
-    return any(part.startswith(".") for part in path.parts)
-
-
-def _file_hash(file_path: Path) -> str:
-    """Compute SHA-256 hash of file content."""
-    h = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for block in iter(lambda: f.read(8192), b""):
-            h.update(block)
-    return h.hexdigest()
+__all__ = ["index_folder", "_file_hash"]
 
 
 def _point_id(file_path: str, chunk_index: int) -> str:
@@ -122,18 +111,14 @@ def index_folder(
     if progress_callback:
         progress_callback(progress)
 
-    all_files: list[Path] = []
-    for file_path in sorted(folder.rglob("*")):
-        if not file_path.is_file():
-            continue
-        if _is_hidden(file_path.relative_to(folder)):
-            continue
-        if file_path.suffix.lower() not in supported:
-            continue
-        if file_path.stat().st_size > max_bytes:
-            logger.warning("Skipping (>%dMB): %s", settings.max_file_size_mb, file_path)
-            continue
-        all_files.append(file_path)
+    # Walk + hash in one pass — parallel SHA-256 via Rust when
+    # HAS_RUST_WALKER is True. See locallens/_file_core.py.
+    entries = walk_and_hash(
+        folder,
+        frozenset(supported),
+        max_file_size_bytes=max_bytes,
+        skip_hidden=True,
+    )
 
     start = time.time()
     files_processed = 0
@@ -144,18 +129,14 @@ def index_folder(
 
     progress = IndexProgress(
         status="indexing",
-        files_total=len(all_files),
+        files_total=len(entries),
     )
     if progress_callback:
         progress_callback(progress)
 
-    for file_path in all_files:
-        try:
-            fhash = _file_hash(file_path)
-        except (PermissionError, OSError) as exc:
-            logger.warning("Could not read %s: %s", file_path, exc)
-            files_processed += 1
-            continue
+    for entry in entries:
+        file_path = entry.path
+        fhash = entry.sha256
 
         if not force and fhash in existing_hashes:
             files_processed += 1
@@ -164,7 +145,7 @@ def index_folder(
                 status="indexing",
                 current_file=file_path.name,
                 files_processed=files_processed,
-                files_total=len(all_files),
+                files_total=len(entries),
                 chunks_created=chunks_created,
                 elapsed_seconds=round(time.time() - start, 1),
                 files_new=files_new,
@@ -258,7 +239,7 @@ def index_folder(
             status="indexing",
             current_file=file_path.name,
             files_processed=files_processed,
-            files_total=len(all_files),
+            files_total=len(entries),
             chunks_created=chunks_created,
             elapsed_seconds=round(time.time() - start, 1),
             files_new=files_new,
@@ -272,7 +253,7 @@ def index_folder(
     final_progress = IndexProgress(
         status="done",
         files_processed=files_processed,
-        files_total=len(all_files),
+        files_total=len(entries),
         chunks_created=chunks_created,
         elapsed_seconds=elapsed,
         files_new=files_new,
