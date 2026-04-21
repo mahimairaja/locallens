@@ -154,9 +154,15 @@ def search(
     ),
     format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
 ) -> None:
-    """Semantic search over your indexed files."""
-    from locallens import LocalLens
+    """Semantic search over your indexed files.
 
+    Supports query arithmetic: use + to add concepts and - to subtract.
+    Example: locallens search "pricing +recent -draft"
+    """
+    from locallens import LocalLens
+    from locallens.pipeline.query_parser import parse_query
+
+    parsed = parse_query(query)
     lens = LocalLens()
     results = lens.search(
         query, top_k=top_k, file_type=file_type, path_prefix=path_prefix
@@ -165,8 +171,26 @@ def search(
     if format == "json":
         import json
 
-        print(json.dumps([r.to_dict() for r in results], indent=2))
+        output = [r.to_dict() for r in results]
+        if parsed.is_arithmetic:
+            print(
+                json.dumps(
+                    {"parsed_terms": parsed.to_dict(), "results": output}, indent=2
+                )
+            )
+        else:
+            print(json.dumps(output, indent=2))
         return
+
+    # Show parsed query components when arithmetic is used
+    if parsed.is_arithmetic:
+        parts = []
+        for t in parsed.terms:
+            if t.sign > 0:
+                parts.append(f"[green]+[/green] {t.text}")
+            else:
+                parts.append(f"[red]-[/red] {t.text}")
+        console.print(f"Query arithmetic: {' '.join(parts)}")
 
     if not results:
         console.print("[yellow]No results found.[/yellow]")

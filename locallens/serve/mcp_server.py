@@ -49,7 +49,11 @@ def create_mcp_app():
         file_type: str | None = None,
         mode: str = "hybrid",
     ) -> list[dict]:
-        """Search indexed files by semantic meaning, keywords, or hybrid. Use this to find files and code relevant to a topic or question."""
+        """Search indexed files by semantic meaning, keywords, or hybrid.
+
+        Supports query arithmetic: use + to add concepts and - to subtract.
+        Example: 'pricing strategy -draft +recent' finds pricing content
+        while de-emphasizing drafts and boosting recent content."""
         lens = _get_lens()
         results = lens.search(query, top_k=top_k, mode=mode, file_type=file_type)
         return [r.to_dict() for r in results]

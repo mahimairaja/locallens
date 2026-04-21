@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, FileSearch } from "lucide-react";
+import { Search, FileSearch, Plus, Minus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { SearchResult, SearchResponse } from "@/types";
 
@@ -60,16 +60,29 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const [addTexts, setAddTexts] = useState<string[]>([]);
+  const [subtractTexts, setSubtractTexts] = useState<string[]>([]);
+
+  const hasRefinements = addTexts.length > 0 || subtractTexts.length > 0;
 
   const doSearch = useCallback(
-    async (q: string) => {
+    async (q: string, boosts?: string[], suppressions?: string[]) => {
       if (q.trim().length < 2) return;
       setLoading(true);
       setHasSearched(true);
+      const curBoosts = boosts ?? addTexts;
+      const curSuppress = suppressions ?? subtractTexts;
       try {
-        const resp: SearchResponse = await api.search(
-          q, topK, fileType || null, null, searchMode, dateFrom || null, dateTo || null,
-        );
+        let resp: SearchResponse;
+        if (curBoosts.length > 0 || curSuppress.length > 0) {
+          resp = await api.refineSearch(
+            q, curBoosts, curSuppress, topK, fileType || null, searchMode,
+          );
+        } else {
+          resp = await api.search(
+            q, topK, fileType || null, null, searchMode, dateFrom || null, dateTo || null,
+          );
+        }
         setResults(resp.results);
         setSearchTime(resp.search_time_ms);
       } catch {
@@ -78,7 +91,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     },
-    [topK, fileType, searchMode, dateFrom, dateTo]
+    [topK, fileType, searchMode, dateFrom, dateTo, addTexts, subtractTexts]
   );
 
   // Auto-search from URL param
@@ -167,6 +180,59 @@ export default function SearchPage() {
             }}
           />
         </div>
+
+        {/* Query arithmetic hint */}
+        {!hasSearched && (
+          <p className="text-xs" style={{ color: "var(--text-tertiary)", fontStyle: "italic" }}>
+            Use + to add concepts, - to subtract. Example: pricing +recent -draft
+          </p>
+        )}
+
+        {/* Refinement pills */}
+        {hasRefinements && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Refinements:</span>
+            {addTexts.map((t, i) => (
+              <span key={`add-${i}`} className="sk-query-tag-positive">
+                <Plus className="inline w-3 h-3 mr-1" />
+                {t.slice(0, 40)}{t.length > 40 ? "..." : ""}
+                <button
+                  className="ml-1 opacity-60 hover:opacity-100"
+                  onClick={() => {
+                    const next = addTexts.filter((_, j) => j !== i);
+                    setAddTexts(next);
+                    doSearch(query, next, subtractTexts);
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            {subtractTexts.map((t, i) => (
+              <span key={`sub-${i}`} className="sk-query-tag-negative">
+                <Minus className="inline w-3 h-3 mr-1" />
+                {t.slice(0, 40)}{t.length > 40 ? "..." : ""}
+                <button
+                  className="ml-1 opacity-60 hover:opacity-100"
+                  onClick={() => {
+                    const next = subtractTexts.filter((_, j) => j !== i);
+                    setSubtractTexts(next);
+                    doSearch(query, addTexts, next);
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              className="text-xs underline"
+              style={{ color: "var(--text-tertiary)" }}
+              onClick={() => { setAddTexts([]); setSubtractTexts([]); doSearch(query, [], []); }}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
 
         {/* Filters row -- Step 8 & 9 */}
         <div
@@ -357,6 +423,32 @@ export default function SearchPage() {
                     }}
                   >
                     Chunk {r.chunk_index + 1}
+                  </span>
+                  <span className="flex items-center gap-1 ml-auto">
+                    <button
+                      className="sk-refine-btn sk-refine-boost"
+                      title="More like this"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = [...addTexts, r.chunk_text];
+                        setAddTexts(next);
+                        doSearch(query, next, subtractTexts);
+                      }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      className="sk-refine-btn sk-refine-suppress"
+                      title="Less like this"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = [...subtractTexts, r.chunk_text];
+                        setSubtractTexts(next);
+                        doSearch(query, addTexts, next);
+                      }}
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
                   </span>
                 </div>
               </CardContent>

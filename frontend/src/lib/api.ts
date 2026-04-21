@@ -145,6 +145,24 @@ export const api = {
       date_to: dateTo || null,
     }),
 
+  // Refine Search (query arithmetic + result-level +/- refinement)
+  refineSearch: (
+    baseQuery: string,
+    addTexts: string[],
+    subtractTexts: string[],
+    topK: number = 10,
+    fileType?: string | null,
+    mode?: string,
+  ) =>
+    post<SearchResponse>("/api/search/refine", {
+      base_query: baseQuery,
+      add_texts: addTexts,
+      subtract_texts: subtractTexts,
+      top_k: topK,
+      file_type: fileType || null,
+      mode: mode || "hybrid",
+    }),
+
   // Ask (SSE -- handled in hook)
   askUrl: () => `${API_BASE}/api/ask?${nsParam()}`,
   askHeaders: () => ({ "Content-Type": "application/json", ...authHeaders() }),
