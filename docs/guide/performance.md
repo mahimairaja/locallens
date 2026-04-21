@@ -16,11 +16,11 @@ LocalLens includes optional Rust extensions that accelerate the performance-crit
 Run `locallens doctor` to see whether the Rust extensions are active:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     LocalLens Doctor                        │
-├─────────────────┬────────┬──────────────────────────────────┤
-│ Rust Extensions │   ✓    │ Active: BM25, Chunker, Walker   │
-└─────────────────┴────────┴──────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                          LocalLens Doctor                            │
+├─────────────────┬────────┬───────────────────────────────────────────┤
+│ Rust Extensions │   ✓    │ Active: BM25, Chunker, Walker, Watcher   │
+└─────────────────┴────────┴───────────────────────────────────────────┘
 ```
 
 If the row shows "Not available (pure-Python fallback)", the Rust extension was not compiled. This happens when installing from sdist without a Rust toolchain.

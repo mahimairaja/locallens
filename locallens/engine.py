@@ -436,6 +436,7 @@ class LocalLens:
             HAS_RUST_BM25,
             HAS_RUST_CHUNKER,
             HAS_RUST_WALKER,
+            HAS_RUST_WATCHER,
         )
 
         if HAS_RUST:
@@ -445,6 +446,7 @@ class LocalLens:
                     "BM25": HAS_RUST_BM25,
                     "Chunker": HAS_RUST_CHUNKER,
                     "Walker": HAS_RUST_WALKER,
+                    "Watcher": HAS_RUST_WATCHER,
                 }.items()
                 if v
             ]

@@ -93,11 +93,11 @@ def chunk_text(
     if not text or not text.strip():
         return []
 
-    if HAS_RUST_CHUNKER:
-        result: list[str] = _rust_chunk_text(text, size, overlap, file_type)
-        return result
-
     ft = file_type.lower()
+
+    if HAS_RUST_CHUNKER:
+        result: list[str] = _rust_chunk_text(text, size, overlap, ft)
+        return result
 
     if ft in (".md", ".txt"):
         return _chunk_markdown(text, size, overlap)

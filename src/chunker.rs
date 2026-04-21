@@ -46,19 +46,37 @@ fn sheet_re() -> &'static Regex {
 // ── core helpers ───────────────────────────────────────────────────
 
 /// Simple char-based subdivision with word-boundary respect.
+/// Snap a byte index to the nearest valid UTF-8 char boundary,
+/// searching backward. Returns 0 if no boundary found above 0.
+fn snap_back(text: &str, idx: usize) -> usize {
+    let mut i = idx.min(text.len());
+    while i > 0 && !text.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+/// Snap a byte index forward to the next valid UTF-8 char boundary.
+fn snap_forward(text: &str, idx: usize) -> usize {
+    let mut i = idx.min(text.len());
+    while i < text.len() && !text.is_char_boundary(i) {
+        i += 1;
+    }
+    i
+}
+
 fn subdivide(text: &str, max_size: usize, overlap: usize) -> Vec<String> {
     let text = text.trim();
     if text.is_empty() {
         return vec![];
     }
 
-    let bytes = text.as_bytes();
-    let text_len = bytes.len();
+    let text_len = text.len();
     let mut chunks = Vec::new();
     let mut start = 0;
 
     while start < text_len {
-        let mut end = (start + max_size).min(text_len);
+        let mut end = snap_back(text, (start + max_size).min(text_len));
 
         // Walk back to nearest space for word boundary
         if end < text_len {
@@ -75,7 +93,7 @@ fn subdivide(text: &str, max_size: usize, overlap: usize) -> Vec<String> {
         }
 
         let advance = if end > overlap { end - overlap } else { end };
-        start = start.max(advance).max(start + 1);
+        start = snap_forward(text, start.max(advance).max(start + 1));
     }
 
     chunks

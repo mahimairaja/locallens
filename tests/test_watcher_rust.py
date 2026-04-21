@@ -74,11 +74,10 @@ class TestRustWatcherDirect:
             time.sleep(0.5)
 
             events = w.poll_events()
-            kinds = {k for _, k in events if "del.txt" in _}
-            # Should have "deleted" (may also have "modified" on some OSes)
-            assert "deleted" in kinds or len(events) > 0, (
-                f"Expected deletion event: {events}"
-            )
+            del_events = [k for p, k in events if "del.txt" in p]
+            # macOS FSEvents may report deletion as "modified"; Linux
+            # inotify reports "deleted". Accept either for del.txt.
+            assert len(del_events) > 0, f"Expected event for del.txt, got: {events}"
 
             w.stop()
 
@@ -119,5 +118,5 @@ class TestFileWatcherWrapper:
         from locallens._watcher import FileWatcher
 
         with tempfile.TemporaryDirectory() as d:
-            w = FileWatcher([d])
-            assert w.backend == "rust"
+            with FileWatcher([d]) as w:
+                assert w.backend == "rust"
