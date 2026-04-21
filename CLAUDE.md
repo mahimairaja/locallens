@@ -81,18 +81,21 @@ Hooks: trailing-whitespace, end-of-file-fixer, check-toml, check-yaml, check-add
 ### Code structure
 
 ```
-locallens/         Python CLI and library (engine, CLI, MCP, chunker, BM25)
-backend/           FastAPI web backend
-frontend/          React web app
-rust/              Rust workspace (optional Rust acceleration)
-  rust/core/       Shared types (FileEntry, ChunkResult, WatchEvent)
-  rust/bm25/       BM25 index and query
-  rust/chunker/    Language-aware text chunking (27 languages)
-  rust/walker/     Parallel file walking + SHA-256 hashing
-  rust/watcher/    File system watching (notify crate)
-  rust/bridge/     PyO3 Python bindings (produces locallens_core module)
-tests/             Python test suite
-docs/              VitePress documentation
+locallens/          Python library and CLI
+backend/            FastAPI web backend
+frontend/           React web app
+rust/               Rust workspace (performance extensions)
+  rust/core/        Shared types
+  rust/bm25/        BM25 index and query
+  rust/chunker/     Language-aware text chunking
+  rust/walker/      Parallel file walking
+  rust/watcher/     File system watching
+  rust/bridge/      PyO3 Python bindings
+tests/              Python test suite
+benchmarks/         Performance benchmarks and findings
+docs/               VitePress documentation site
+scripts/            Utility scripts
+assets/             Logo and demo GIF
 ```
 
 ### Key concepts

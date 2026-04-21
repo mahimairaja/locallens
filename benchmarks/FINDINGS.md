@@ -1,10 +1,10 @@
 # LocalLens engine — pipeline benchmark findings
 
-Benchmark script: [`scripts/bench_pipeline.py`](../scripts/bench_pipeline.py)  
+Benchmark script: [`scripts/bench_pipeline.py`](../scripts/bench_pipeline.py)
 Reports: `bench_200.json`, `bench_500.json` (pre-fix);
 `bench_200_post.json`, `bench_500_post.json` (post-fix, see the
-"Post-fix results" section at the bottom).  
-Corpus: synthetic `.md`/`.txt`/`.py` files (~5 KB avg), seeded RNG (reproducible).  
+"Post-fix results" section at the bottom).
+Corpus: synthetic `.md`/`.txt`/`.py` files (~5 KB avg), seeded RNG (reproducible).
 Embedder: **mocked** 384-dim vectors — HuggingFace was unreachable in the sandbox.
 Real `all-MiniLM-L6-v2` timings are referenced from published numbers below.
 
@@ -519,5 +519,3 @@ keystroke delay.
   diminishing and probably not worth further engineering time.
   Investment should pivot to release engineering, algorithmic work on
   search ranking, or user-facing features.
-
-
