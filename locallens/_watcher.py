@@ -87,7 +87,8 @@ class FileWatcher:
     def poll_events(self) -> list[tuple[str, str]]:
         """Drain pending events. Returns ``[(path, kind), ...]``."""
         if self._backend == "rust" and self._impl is not None:
-            return self._impl.poll_events()
+            result: list[tuple[str, str]] = self._impl.poll_events()
+            return result
         # Watchdog fallback: drain the accumulated list
         events = list(self._events)
         self._events.clear()
@@ -97,9 +98,8 @@ class FileWatcher:
         self.start()
         return self
 
-    def __exit__(self, *_args: object) -> bool:
+    def __exit__(self, *_args: object) -> None:
         self.stop()
-        return False
 
     # ── watchdog fallback ───────────────────────────────────────────
 

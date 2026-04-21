@@ -94,7 +94,8 @@ def chunk_text(
         return []
 
     if HAS_RUST_CHUNKER:
-        return _rust_chunk_text(text, size, overlap, file_type)
+        result: list[str] = _rust_chunk_text(text, size, overlap, file_type)
+        return result
 
     ft = file_type.lower()
 
