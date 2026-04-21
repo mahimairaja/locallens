@@ -969,3 +969,54 @@ button, a, [data-slot="button"], .sk-nav-item, .sk-card, .sk-postit, [data-slot=
   visibility: visible;
   opacity: 1;
 }
+
+/* ── Query arithmetic tags ─────────────────────────────────── */
+.sk-query-tag-positive {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  background: rgba(198, 123, 60, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(198, 123, 60, 0.3);
+}
+.sk-query-tag-negative {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  background: rgba(220, 80, 80, 0.08);
+  color: #b45050;
+  border: 1px solid rgba(220, 80, 80, 0.25);
+}
+
+/* ── Refine +/- buttons on result cards ────────────────────── */
+.sk-refine-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.sk-refine-btn:hover {
+  transform: scale(1.1);
+}
+.sk-refine-boost:hover {
+  background: rgba(198, 123, 60, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sk-refine-suppress:hover {
+  background: rgba(220, 80, 80, 0.08);
+  border-color: #b45050;
+  color: #b45050;
+}
