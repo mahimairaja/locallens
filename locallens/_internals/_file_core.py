@@ -55,10 +55,17 @@ def hash_file(path: Path) -> str:
     regardless of which backend runs it.
     """
     if HAS_RUST_WALKER:
-        from locallens._locallens_rs import RustWalker  # type: ignore[attr-defined]
+        try:
+            from locallens._locallens_rs import (  # type: ignore[attr-defined]
+                RustWalker,
+            )
 
-        result: str = RustWalker.hash_file(str(path))
-        return result
+            result: str = RustWalker.hash_file(str(path))
+            return result
+        except ImportError:
+            # New `locallens_core` workspace layout does not expose a
+            # hash_file primitive -- fall through to the pure-Python path.
+            pass
     return _py_hash_file(path)
 
 
@@ -93,17 +100,24 @@ def walk_and_hash(
     ext_list = [e.lower() for e in extensions]
 
     if HAS_RUST_WALKER:
-        from locallens._locallens_rs import RustWalker  # type: ignore[attr-defined]
+        try:
+            from locallens._locallens_rs import (  # type: ignore[attr-defined]
+                RustWalker,
+            )
 
-        walker = RustWalker(
-            ext_list,
-            max_file_size_bytes,
-            skip_hidden=skip_hidden,
-            follow_symlinks=follow_symlinks,
-            parallel=run_parallel,
-        )
-        raw = walker.walk_and_hash(str(root))
-        return [FileEntry(Path(p), sha, size) for p, sha, size in raw]
+            walker = RustWalker(
+                ext_list,
+                max_file_size_bytes,
+                skip_hidden=skip_hidden,
+                follow_symlinks=follow_symlinks,
+                parallel=run_parallel,
+            )
+            raw = walker.walk_and_hash(str(root))
+            return [FileEntry(Path(p), sha, size) for p, sha, size in raw]
+        except ImportError:
+            # New `locallens_core` workspace has `walk_files`+`extract_texts`
+            # but no combined walk+hash primitive. Fall through to Python.
+            pass
 
     return _PyWalker(
         extensions=frozenset(ext_list),

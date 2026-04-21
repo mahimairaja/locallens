@@ -15,7 +15,10 @@ from typing import Any
 from locallens._internals._rust import HAS_RUST_WATCHER
 
 if HAS_RUST_WATCHER:
-    from locallens._locallens_rs import RustWatcher  # type: ignore[import-not-found]
+    try:
+        from locallens_core import FileWatcher as RustWatcher  # type: ignore[import-not-found]
+    except ImportError:
+        from locallens._locallens_rs import RustWatcher  # type: ignore[attr-defined,no-redef]
 
 log = logging.getLogger(__name__)
 
@@ -90,8 +93,12 @@ class FileWatcher:
     def poll_events(self) -> list[tuple[str, str]]:
         """Drain pending events. Returns ``[(path, kind), ...]``."""
         if self._backend == "rust" and self._impl is not None:
-            result: list[tuple[str, str]] = self._impl.poll_events()
-            return result
+            raw = self._impl.poll_events()
+            # Old `_locallens_rs` returns tuples; new `locallens_core`
+            # returns WatchEvent objects with `.path` and `.event_type`.
+            if raw and hasattr(raw[0], "path"):
+                return [(e.path, e.event_type) for e in raw]
+            return list(raw)
         # Watchdog fallback: atomically drain the deque
         with self._lock:
             events = list(self._events)

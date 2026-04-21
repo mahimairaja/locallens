@@ -14,10 +14,32 @@ import re
 
 from locallens._internals._rust import HAS_RUST_CHUNKER
 
+_RUST_BACKEND = None
 if HAS_RUST_CHUNKER:
-    from locallens._locallens_rs import (  # type: ignore[import-not-found]
-        chunk_text as _rust_chunk_text,
-    )
+    try:
+        from locallens_core import chunk_structured as _rust_chunk_structured  # type: ignore[import-not-found]
+
+        _RUST_BACKEND = "workspace"
+    except ImportError:
+        try:
+            from locallens._locallens_rs import (  # type: ignore[attr-defined]
+                chunk_text as _rust_chunk_text_legacy,
+            )
+
+            _RUST_BACKEND = "legacy"
+        except ImportError:
+            _RUST_BACKEND = None
+
+
+def _rust_chunk_text(text: str, size: int, overlap: int, file_type: str) -> list[str]:
+    """Shim that normalizes between the old and new Rust chunker APIs."""
+    if _RUST_BACKEND == "workspace":
+        result = _rust_chunk_structured(text, file_type, size, overlap, 100)
+        return [c.text for c in result] if result else []
+    if _RUST_BACKEND == "legacy":
+        return list(_rust_chunk_text_legacy(text, size, overlap, file_type))
+    raise RuntimeError("No Rust chunker backend available")
+
 
 MAX_CHUNK = 1000
 MIN_CHUNK = 100
@@ -96,7 +118,7 @@ def chunk_text(
 
     ft = file_type.lower()
 
-    if HAS_RUST_CHUNKER:
+    if HAS_RUST_CHUNKER and _RUST_BACKEND is not None:
         result: list[str] = _rust_chunk_text(text, size, overlap, ft)
         return result
 
