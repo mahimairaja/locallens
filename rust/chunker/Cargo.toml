@@ -1,0 +1,16 @@
+[package]
+name = "locallens-chunker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+locallens-core = { path = "../core" }
+pyo3 = { workspace = true }
+rayon = { workspace = true }
+regex = { workspace = true }
+unicode-segmentation = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
