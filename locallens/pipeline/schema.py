@@ -53,9 +53,15 @@ def _load_all() -> dict[str, CollectionSchema]:
         return {}
     result: dict[str, CollectionSchema] = {}
     for name, data in raw.items():
-        current = SchemaVersion(**data["current"])
-        history = [SchemaVersion(**v) for v in data.get("history", [])]
-        result[name] = CollectionSchema(name=name, current=current, history=history)
+        try:
+            if not isinstance(data, dict) or "current" not in data:
+                log.warning("Skipping malformed schema entry: %s", name)
+                continue
+            current = SchemaVersion(**data["current"])
+            history = [SchemaVersion(**v) for v in data.get("history", [])]
+            result[name] = CollectionSchema(name=name, current=current, history=history)
+        except (KeyError, TypeError, ValueError) as exc:
+            log.warning("Skipping corrupt schema for %s: %s", name, exc)
     return result
 
 

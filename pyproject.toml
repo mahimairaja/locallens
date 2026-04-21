@@ -86,7 +86,7 @@ fast = [
     "locallens-core>=0.1.0",
 ]
 all = [
-    "locallens[voice,mcp,server,parsing,ocr,fast]",
+    "locallens[voice,mcp,server,parsing,ocr]",
 ]
 
 [project.scripts]

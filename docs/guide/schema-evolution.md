@@ -19,7 +19,7 @@ On startup, LocalLens compares the desired schema (defined in code) against the 
 |---|---|
 | **New collection** | Stores current schema as v1 |
 | **No change** | Nothing happens |
-| **New payload fields** | Creates new indexes, increments version, logs migration |
+| **New payload fields** | Increments schema version, logs migration |
 | **Removed fields** | Refuses to start with error, requires re-index |
 | **Field type changes** | Refuses to start with error, requires re-index |
 | **Vector config change** | Refuses to start with error, requires re-index |
@@ -54,7 +54,7 @@ locallens schema show
 locallens schema history
 ```
 
-```
+```text
 ┌─────────────────────────────────────┐
 │   Schema History: locallens         │
 ├─────────┬────────┬──────────────────┤
