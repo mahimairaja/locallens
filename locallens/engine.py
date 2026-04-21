@@ -76,6 +76,14 @@ class LocalLens:
         self._store_module = store
         self._store_initialized = True
 
+        # Schema migration check
+        try:
+            from locallens.schema import check_and_migrate
+
+            check_and_migrate(self._collection_name)
+        except Exception:
+            pass  # Non-fatal: schema tracking is best-effort
+
     def _get_store(self) -> Any:
         self._init_store()
         return self._store_module
@@ -446,6 +454,28 @@ class LocalLens:
                     "Not available (pure-Python fallback)",
                 )
             )
+
+        # 8. Schema version
+        try:
+            from locallens.schema import get_schema
+
+            schema = get_schema(self._collection_name)
+            if schema:
+                checks.append(
+                    DoctorCheck(
+                        "Schema Version",
+                        "ok",
+                        f"v{schema.current.version} ({len(schema.current.payload_fields)} fields)",
+                    )
+                )
+            else:
+                checks.append(
+                    DoctorCheck(
+                        "Schema Version", "warn", "Not initialized (run index first)"
+                    )
+                )
+        except Exception:
+            checks.append(DoctorCheck("Schema Version", "warn", "Could not check"))
 
         return checks
 

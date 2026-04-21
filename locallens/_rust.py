@@ -1,27 +1,14 @@
 """Runtime capability flags for the optional Rust extension.
 
-The compiled extension at ``locallens._locallens_rs`` (built by maturin;
-see ``pyproject.toml`` ``[tool.maturin]``) exports module-level
-``HAS_BM25`` / ``HAS_CHUNKER`` / ``HAS_WALKER`` booleans so the rollout
-can ship one module at a time. This file reads those flags on import and
-re-exports:
+Tries three import paths in order:
 
-- ``HAS_RUST`` — True iff the extension imports at all.
-- ``HAS_RUST_BM25`` — True iff the extension advertises the BM25 class.
-- ``HAS_RUST_CHUNKER`` — True iff the extension has the chunk_text function.
-- ``HAS_RUST_WALKER`` — True iff the extension has the RustWalker class.
-- ``HAS_RUST_WATCHER`` — True iff the extension has the RustWatcher class.
+1. ``locallens_core`` -- the separate ``locallens-core`` PyPI package
+   (new workspace layout under ``rust/``).
+2. ``locallens._locallens_rs`` -- the in-package maturin layout
+   (legacy flat ``src/`` layout).
+3. ``_locallens_rs`` -- top-level fallback for manual installs.
 
-Install layout: maturin with ``module-name = "locallens._locallens_rs"``
-installs the compiled extension inside the package, reachable as
-``locallens._locallens_rs``. We try that path first, then fall back to a
-top-level ``_locallens_rs`` import so a manually-installed or legacy-layout
-extension still works.
-
-This module is imported eagerly at module-load time by any caller that
-wants to branch on Rust availability. The import must never raise — when
-a user installs from sdist without a Rust toolchain (or uses an
-unsupported platform), the ``HAS_RUST*`` flags stay False and callers
+When none succeed, all ``HAS_RUST*`` flags stay False and callers
 fall back to the pure-Python implementation.
 """
 
@@ -41,13 +28,22 @@ HAS_RUST_WATCHER: bool = False
 
 
 def _import_extension() -> ModuleType | None:
-    """Try the in-package layout first, then the top-level fallback."""
+    """Try import paths in preference order."""
+    # 1. New workspace layout: separate locallens-core package
+    try:
+        import locallens_core  # type: ignore[import-not-found]
+
+        return cast(ModuleType, locallens_core)
+    except ImportError:
+        pass
+    # 2. In-package maturin layout (legacy)
     try:
         from locallens import _locallens_rs  # type: ignore[attr-defined]
 
         return cast(ModuleType, _locallens_rs)
     except ImportError:
         pass
+    # 3. Top-level fallback
     try:
         import _locallens_rs  # type: ignore[import-not-found]
 
@@ -60,20 +56,21 @@ def _import_extension() -> ModuleType | None:
 _ext = _import_extension()
 if _ext is not None:
     HAS_RUST = True
-    HAS_RUST_BM25 = bool(getattr(_ext, "HAS_BM25", False))
-    HAS_RUST_CHUNKER = bool(getattr(_ext, "HAS_CHUNKER", False))
-    HAS_RUST_WALKER = bool(getattr(_ext, "HAS_WALKER", False))
-    HAS_RUST_WATCHER = bool(getattr(_ext, "HAS_WATCHER", False))
+    # New workspace layout uses different flag names
+    HAS_RUST_BM25 = bool(getattr(_ext, "HAS_BM25", False)) or hasattr(_ext, "BM25Index")
+    HAS_RUST_CHUNKER = bool(getattr(_ext, "HAS_CHUNKER", False)) or hasattr(
+        _ext, "chunk_text"
+    )
+    HAS_RUST_WALKER = bool(getattr(_ext, "HAS_WALKER", False)) or hasattr(
+        _ext, "walk_files"
+    )
+    HAS_RUST_WATCHER = bool(getattr(_ext, "HAS_WATCHER", False)) or hasattr(
+        _ext, "FileWatcher"
+    )
 
 
 def has_rust_extension() -> bool:
-    """Return True when the compiled Rust extension is importable.
-
-    Callers that want finer-grained capability detection should read the
-    module-level ``HAS_RUST_BM25`` / ``HAS_RUST_CHUNKER`` / ``HAS_RUST_WALKER``
-    / ``HAS_RUST_WATCHER`` constants directly — a single extension may ship
-    subsets of the modules during the rollout.
-    """
+    """Return True when the compiled Rust extension is importable."""
     return HAS_RUST
 
 

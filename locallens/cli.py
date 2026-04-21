@@ -573,6 +573,26 @@ def doctor(
             "Not available (pure-Python fallback)",
         )
 
+    # 9. Schema version
+    try:
+        from locallens.schema import get_schema
+
+        schema = get_schema(COLLECTION_NAME)
+        if schema:
+            table.add_row(
+                "Schema Version",
+                PASS,
+                f"v{schema.current.version} ({len(schema.current.payload_fields)} fields)",
+            )
+        else:
+            table.add_row(
+                "Schema Version",
+                "[yellow]-[/yellow]",
+                "Not initialized (run index first)",
+            )
+    except Exception:
+        table.add_row("Schema Version", "[yellow]-[/yellow]", "Could not check")
+
     console.print()
     console.print(table)
     console.print()
@@ -647,3 +667,62 @@ def serve_default(
         start_dashboard(port=port or 8000, with_ui=True)
     elif ctx.invoked_subcommand is None:
         console.print(ctx.get_help())
+
+
+# ── schema command group ────────────────────────────────────────────
+
+schema_app = typer.Typer(
+    name="schema",
+    help="Inspect and manage the collection schema.",
+    no_args_is_help=True,
+)
+app.add_typer(schema_app)
+
+
+@schema_app.command("show")
+def schema_show(
+    collection: str = typer.Option(
+        "locallens", "--collection", help="Collection name."
+    ),
+) -> None:
+    """Print the current schema for a collection."""
+    from locallens.schema import get_schema
+
+    schema = get_schema(collection)
+    if schema is None:
+        console.print(f"[yellow]No schema stored for '{collection}'.[/yellow]")
+        console.print("Run [bold]locallens index <folder>[/bold] to initialize.")
+        raise typer.Exit()
+
+    table = Table(title=f"Schema: {collection} (v{schema.current.version})")
+    table.add_column("Field", style="bold")
+    table.add_column("Type")
+    for field_name, field_type in schema.current.payload_fields.items():
+        table.add_row(field_name, field_type)
+    console.print(table)
+
+    console.print(f"\nVector: [cyan]{schema.current.vector_config}[/cyan]")
+    console.print(f"Created: {schema.current.created_at}")
+
+
+@schema_app.command("history")
+def schema_history(
+    collection: str = typer.Option(
+        "locallens", "--collection", help="Collection name."
+    ),
+) -> None:
+    """Print all schema versions for a collection."""
+    from locallens.schema import get_schema
+
+    schema = get_schema(collection)
+    if schema is None:
+        console.print(f"[yellow]No schema history for '{collection}'.[/yellow]")
+        raise typer.Exit()
+
+    table = Table(title=f"Schema History: {collection}")
+    table.add_column("Version", style="bold", width=8)
+    table.add_column("Fields", width=12)
+    table.add_column("Created")
+    for v in schema.history:
+        table.add_row(str(v.version), str(len(v.payload_fields)), v.created_at)
+    console.print(table)
