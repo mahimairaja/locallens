@@ -42,13 +42,13 @@ docs-build:
 	cd docs && npm run docs:build
 
 rust-dev:
-	maturin develop --release
+	cd rust && maturin develop --release
 
 rust-build:
-	maturin build --release
+	cd rust && maturin build --release
 
 rust-test:
-	cargo test
+	cd rust && cargo test --workspace
 
 bench:
 	$(PYTHON) scripts/bench_pipeline.py --files 200 --mock-embed

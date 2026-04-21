@@ -47,7 +47,12 @@ Open http://localhost:5173. Pages: **Dashboard** (stats), **Index** (folder pick
 ### CLI only (no Docker needed)
 
 ```bash
-pip install -e .
+pip install locallens                    # pure Python, works everywhere
+pip install "locallens[fast]"            # with Rust extensions, 5-10x faster on large corpora
+pip install locallens-core               # just the Rust extensions for custom use
+```
+
+```bash
 locallens doctor            # verify setup
 locallens index ~/Documents
 locallens search "meeting notes from last week"

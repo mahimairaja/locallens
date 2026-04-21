@@ -68,6 +68,40 @@ pre-commit run --all-files     # run all hooks manually
 
 Hooks: trailing-whitespace, end-of-file-fixer, check-toml, check-yaml, check-added-large-files, ruff (with --fix), ruff-format.
 
+### Workflow summary
+
+| Change Type | Commands to Run |
+|---|---|
+| Python code only | `make test` |
+| Rust code only | `make rust-dev && make rust-test` |
+| Both Rust and Python | `make rust-dev && make rust-test && make test` |
+| Frontend only | `cd frontend && npm run build` |
+| Documentation only | `cd docs && npm run docs:build` |
+
+### Code structure
+
+```
+locallens/         Python CLI and library (engine, CLI, MCP, chunker, BM25)
+backend/           FastAPI web backend
+frontend/          React web app
+rust/              Rust workspace (optional Rust acceleration)
+  rust/core/       Shared types (FileEntry, ChunkResult, WatchEvent)
+  rust/bm25/       BM25 index and query
+  rust/chunker/    Language-aware text chunking (27 languages)
+  rust/walker/     Parallel file walking + SHA-256 hashing
+  rust/watcher/    File system watching (notify crate)
+  rust/bridge/     PyO3 Python bindings (produces locallens_core module)
+tests/             Python test suite
+docs/              VitePress documentation
+```
+
+### Key concepts
+
+- **Engine-first**: LocalLens is a Python library at the core (`locallens.engine.LocalLens`). The CLI, MCP server, and REST API are thin consumers.
+- **Rust extensions are optional**: `pip install "locallens[fast]"` installs `locallens-core` (the Rust package). Without it, pure Python works identically, just slower.
+- **Fallback pattern**: `locallens.fast` tries `import locallens_core`, falls back to pure Python. `locallens._rust` exposes `HAS_RUST_*` flags for granular detection.
+- **Schema evolution**: `locallens/schema.py` tracks Qdrant collection payload schema versions across updates. Additive changes auto-migrate, breaking changes refuse to start.
+
 ## Architecture Notes
 
 ### Engine-first design
