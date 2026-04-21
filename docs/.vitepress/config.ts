@@ -3,15 +3,15 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'LocalLens',
   description: 'Semantic file search engine for AI agents. 100% offline.',
-  base: '/locallens/',
+  base: '/',
   appearance: false,
 
   head: [
-    ['link', { rel: 'icon', href: '/locallens/logo.svg' }],
+    ['link', { rel: 'icon', href: '/logo.png' }],
   ],
 
   themeConfig: {
-    logo: '/logo.svg',
+    logo: '/logo.png',
     siteTitle: 'LocalLens',
 
     nav: [
@@ -34,6 +34,7 @@ export default defineConfig({
             { text: 'Architecture', link: '/guide/architecture' },
             { text: 'Configuration', link: '/guide/configuration' },
             { text: 'Performance', link: '/guide/performance' },
+            { text: 'Schema Evolution', link: '/guide/schema-evolution' },
             { text: 'Supported File Types', link: '/guide/file-types' },
             { text: 'FAQ', link: '/guide/faq' },
           ],

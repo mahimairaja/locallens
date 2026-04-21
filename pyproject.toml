@@ -78,17 +78,15 @@ dev = [
     "httpx>=0.27.0",
     "ruff>=0.4.0",
     "mypy>=1.10.0",
-    # maturin is already the active build-backend (see [build-system]
-    # below); we also list it in the `dev` extras so contributors get it
-    # via `pip install -e ".[dev]"` for direct invocation as
-    # `maturin develop --release`.
+    # maturin is listed so contributors can build the optional Rust
+    # extensions via `cd rust && maturin develop --release`.
     "maturin>=1.7.0",
 ]
-# The Rust extension is compiled into the wheel by maturin (the build
-# backend). This extra exists for spec compatibility; it is a no-op.
-fast = []
+fast = [
+    "locallens-core>=0.1.0",
+]
 all = [
-    "locallens[voice,mcp,server,parsing,ocr,fast]",
+    "locallens[voice,mcp,server,parsing,ocr]",
 ]
 
 [project.scripts]
@@ -117,24 +115,13 @@ markers = [
 
 [project.urls]
 Homepage = "https://github.com/mahimairaja/locallens"
-Documentation = "https://mahimairaja.github.io/locallens/"
+Documentation = "https://locallens.mahimai.ca/"
 Repository = "https://github.com/mahimairaja/locallens"
 Issues = "https://github.com/mahimairaja/locallens/issues"
 
 [build-system]
-requires = ["maturin>=1.7,<2.0"]
-build-backend = "maturin"
-
-[tool.maturin]
-module-name = "locallens._locallens_rs"
-features = ["pyo3/extension-module", "pyo3/abi3-py311"]
-python-source = "."
-strip = true
-# The sdist ships Cargo.toml + src/ so a user without prebuilt wheels can
-# build from source via `pip install --no-binary :all: locallens` when they
-# have a Rust toolchain. Platforms without rustc should prefer the prebuilt
-# wheels (abi3-py311 covers Python 3.11-3.13 on our release matrix).
-include = ["Cargo.toml", "src/**/*.rs"]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [tool.pyright]
 typeCheckingMode = "off"
@@ -164,8 +151,13 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["F401", "F811"]
-"locallens/voice.py" = ["B023"]
+"tests/*" = ["F401", "F811", "I001"]
+"locallens/integrations/voice.py" = ["B023"]
+"locallens/fast.py" = ["F401", "I001"]
+"locallens/pipeline/bm25.py" = ["I001"]
+"locallens/pipeline/chunker.py" = ["I001"]
+"locallens/_internals/_watcher.py" = ["I001"]
+"backend/app/services/bm25.py" = ["I001"]
 
 [tool.mypy]
 python_version = "3.11"

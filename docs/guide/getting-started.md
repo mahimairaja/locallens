@@ -48,19 +48,21 @@ locallens doctor
 
 Example output:
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  LocalLens Doctor                    │
-├─────────────────┬────────┬──────────────────────────┤
-│ Check           │ Status │ Detail                   │
-├─────────────────┼────────┼──────────────────────────┤
-│ Qdrant Edge     │   ✓    │ Shard OK, 1284 points    │
-│ Ollama          │   ✓    │ Running at localhost:11434│
-│ Embedding Model │   ✓    │ all-MiniLM-L6-v2 (384)   │
-│ Voice STT       │   -    │ Not installed (optional)  │
-│ Voice TTS       │   -    │ Not installed (optional)  │
-│ Disk Space      │   ✓    │ 45.2 GB free             │
-└─────────────────┴────────┴──────────────────────────┘
+```text
+┌───────────────────────────────────────────────────────────┐
+│                    LocalLens Doctor                        │
+├─────────────────┬────────┬────────────────────────────────┤
+│ Check           │ Status │ Detail                         │
+├─────────────────┼────────┼────────────────────────────────┤
+│ Qdrant Edge     │   ✓    │ Shard OK, 1284 points          │
+│ Ollama          │   ✓    │ Running at localhost:11434      │
+│ Embedding Model │   ✓    │ all-MiniLM-L6-v2 (384-dim)     │
+│ Voice STT       │   -    │ Not installed (optional)        │
+│ Voice TTS       │   -    │ Not installed (optional)        │
+│ Disk Space      │   ✓    │ 45.2 GB free                   │
+│ Rust Extensions │   ✓    │ Active: BM25, Chunker, Walker  │
+│ Schema Version  │   ✓    │ v1 (7 fields)                  │
+└─────────────────┴────────┴────────────────────────────────┘
 ```
 
 ## Next steps

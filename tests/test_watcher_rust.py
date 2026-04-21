@@ -9,46 +9,71 @@ from pathlib import Path
 
 import pytest
 
-from locallens._rust import HAS_RUST_WATCHER
+from locallens._internals._rust import HAS_RUST_WATCHER
 
 pytestmark = pytest.mark.skipif(
     not HAS_RUST_WATCHER, reason="Rust watcher not available"
 )
 
 
+def _rust_watcher_cls():
+    """Return the Rust watcher class, trying both layouts.
+
+    - New workspace (`locallens_core`) exports `FileWatcher`
+    - Old in-package (`locallens._locallens_rs`) exports `RustWatcher`
+    """
+    try:
+        from locallens_core import FileWatcher  # type: ignore[import-not-found]
+
+        return FileWatcher
+    except ImportError:
+        pass
+    try:
+        from locallens._locallens_rs import RustWatcher  # type: ignore[import-not-found]
+
+        return RustWatcher
+    except ImportError:
+        pytest.skip("Rust watcher class not importable")
+
+
+def _normalize(events):
+    """Normalize events to [(path, kind), ...] regardless of backend."""
+    if not events:
+        return []
+    if hasattr(events[0], "path"):
+        return [(e.path, e.event_type) for e in events]
+    return list(events)
+
+
 class TestRustWatcherDirect:
-    """Test the RustWatcher pyclass directly."""
+    """Test the Rust watcher pyclass directly."""
 
     def test_start_stop(self):
-        from locallens._locallens_rs import RustWatcher
-
+        WatcherCls = _rust_watcher_cls()
         with tempfile.TemporaryDirectory() as d:
-            w = RustWatcher([Path(d)], debounce_ms=100)
+            w = WatcherCls([Path(d)], debounce_ms=100)
             w.start()
             w.stop()
 
     def test_poll_events_returns_list(self):
-        from locallens._locallens_rs import RustWatcher
-
+        WatcherCls = _rust_watcher_cls()
         with tempfile.TemporaryDirectory() as d:
-            w = RustWatcher([Path(d)], debounce_ms=100)
+            w = WatcherCls([Path(d)], debounce_ms=100)
             w.start()
             events = w.poll_events()
             assert isinstance(events, list)
             w.stop()
 
     def test_detects_file_creation(self):
-        from locallens._locallens_rs import RustWatcher
-
+        WatcherCls = _rust_watcher_cls()
         with tempfile.TemporaryDirectory() as d:
-            w = RustWatcher([Path(d)], debounce_ms=100)
+            w = WatcherCls([Path(d)], debounce_ms=100)
             w.start()
 
-            # Create a file
             Path(d, "test.txt").write_text("hello")
             time.sleep(0.5)
 
-            events = w.poll_events()
+            events = _normalize(w.poll_events())
             paths = [p for p, _ in events]
             assert any("test.txt" in p for p in paths), (
                 f"Expected test.txt in events: {events}"
@@ -57,23 +82,20 @@ class TestRustWatcherDirect:
             w.stop()
 
     def test_detects_file_deletion(self):
-        from locallens._locallens_rs import RustWatcher
-
+        WatcherCls = _rust_watcher_cls()
         with tempfile.TemporaryDirectory() as d:
-            # Create file first
             f = Path(d, "del.txt")
             f.write_text("bye")
             time.sleep(0.1)
 
-            w = RustWatcher([Path(d)], debounce_ms=100)
+            w = WatcherCls([Path(d)], debounce_ms=100)
             w.start()
             time.sleep(0.1)
 
-            # Delete it
             f.unlink()
             time.sleep(0.5)
 
-            events = w.poll_events()
+            events = _normalize(w.poll_events())
             del_events = [k for p, k in events if "del.txt" in p]
             # macOS FSEvents may report deletion as "modified"; Linux
             # inotify reports "deleted". Accept either for del.txt.
@@ -82,10 +104,9 @@ class TestRustWatcherDirect:
             w.stop()
 
     def test_poll_drains_queue(self):
-        from locallens._locallens_rs import RustWatcher
-
+        WatcherCls = _rust_watcher_cls()
         with tempfile.TemporaryDirectory() as d:
-            w = RustWatcher([Path(d)], debounce_ms=100)
+            w = WatcherCls([Path(d)], debounce_ms=100)
             w.start()
 
             Path(d, "a.txt").write_text("aaa")
@@ -101,10 +122,10 @@ class TestRustWatcherDirect:
 
 
 class TestFileWatcherWrapper:
-    """Test the unified FileWatcher from locallens/_watcher.py."""
+    """Test the unified FileWatcher from locallens/_internals/_watcher.py."""
 
     def test_context_manager(self):
-        from locallens._watcher import FileWatcher
+        from locallens._internals._watcher import FileWatcher
 
         with tempfile.TemporaryDirectory() as d:
             with FileWatcher([d], debounce_ms=100) as w:
@@ -115,7 +136,7 @@ class TestFileWatcherWrapper:
                 assert isinstance(events, list)
 
     def test_backend_is_rust(self):
-        from locallens._watcher import FileWatcher
+        from locallens._internals._watcher import FileWatcher
 
         with tempfile.TemporaryDirectory() as d:
             with FileWatcher([d]) as w:

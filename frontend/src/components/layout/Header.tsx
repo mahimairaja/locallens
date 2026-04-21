@@ -2,7 +2,7 @@ import { useLocation } from "react-router-dom";
 
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
-  "/index": "Index Files",
+  "/index": "Indexing",
   "/search": "Search",
   "/ask": "Ask",
   "/stack": "Under the Hood",

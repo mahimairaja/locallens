@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from rank_bm25 import BM25Okapi
 
-from locallens._bm25_core import _Bm25Index, _tokenize
+from locallens._internals._bm25_core import _Bm25Index, _tokenize
 
 FIXED_CORPUS = [
     "the quick brown fox jumps over the lazy dog",
@@ -285,7 +285,7 @@ def test_eager_flush_env_override(tmp_path: Path, monkeypatch) -> None:
 
 def test_cli_and_backend_share_core() -> None:
     from backend.app.services import bm25 as backend_bm25
-    from locallens import bm25 as cli_bm25
+    from locallens.pipeline import bm25 as cli_bm25
 
     assert type(cli_bm25._index) is type(backend_bm25._index)
 
@@ -312,10 +312,18 @@ def _get_rust_cls():
     broken, which should fail CI rather than silently skip the tests.
     """
     try:
+        from locallens_core import BM25Index  # type: ignore[import-not-found]
+
+        return BM25Index
+    except (ModuleNotFoundError, ImportError):
+        pass
+    try:
         from locallens._locallens_rs import RustBM25  # type: ignore[import-not-found]
+
+        return RustBM25
     except ModuleNotFoundError:
         pytest.skip(_RUST_IMPORT_REASON)
-    return RustBM25
+    return None  # unreachable
 
 
 def test_rust_python_search_parity(tmp_path: Path) -> None:
@@ -395,7 +403,7 @@ def test_python_reads_rust_json(tmp_path: Path) -> None:
 
 
 def test_wrapper_set_persist_path(tmp_path: Path) -> None:
-    from locallens import bm25 as cli_bm25
+    from locallens.pipeline import bm25 as cli_bm25
 
     orig_path = cli_bm25._index.persist_path
     redirect = tmp_path / "nested" / "idx.json"

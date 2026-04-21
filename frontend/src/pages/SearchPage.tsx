@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, FileSearch } from "lucide-react";
+import { Search, FileSearch, Plus, Minus, X, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
 import type { SearchResult, SearchResponse } from "@/types";
 
@@ -47,6 +46,50 @@ const EXAMPLE_QUERIES = [
   "Configuration files",
 ];
 
+/* ---- Shared inline-style constants matching the wireframe spec ---- */
+const CHIP_BASE: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', var(--font-mono)",
+  fontSize: "9px",
+  padding: "3px 7px",
+  border: "1px solid var(--border)",
+  borderRadius: "10px",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  whiteSpace: "nowrap",
+  transition: "all 120ms ease",
+  lineHeight: 1.4,
+};
+
+const CHIP_ACTIVE: React.CSSProperties = {
+  ...CHIP_BASE,
+  background: "var(--text-primary)",
+  color: "var(--bg-card)",
+  borderColor: "var(--text-primary)",
+};
+
+const CHIP_ADD: React.CSSProperties = {
+  ...CHIP_BASE,
+  background: "transparent",
+  color: "var(--text-tertiary)",
+  borderStyle: "dashed",
+};
+
+const CHIP_MODE: React.CSSProperties = {
+  ...CHIP_BASE,
+  background: "transparent",
+  color: "var(--text-secondary)",
+  borderColor: "var(--border)",
+};
+
+const CHIP_MODE_ACTIVE: React.CSSProperties = {
+  ...CHIP_BASE,
+  background: "var(--accent)",
+  color: "var(--text-on-accent)",
+  borderColor: "var(--accent)",
+};
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -60,16 +103,42 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const [addTexts, setAddTexts] = useState<string[]>([]);
+  const [subtractTexts, setSubtractTexts] = useState<string[]>([]);
+
+  /* Popover state for add-filter chips */
+  const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCountMenu, setShowCountMenu] = useState(false);
+
+  const hasRefinements = addTexts.length > 0 || subtractTexts.length > 0;
 
   const doSearch = useCallback(
-    async (q: string) => {
+    async (q: string, boosts?: string[], suppressions?: string[]) => {
       if (q.trim().length < 2) return;
       setLoading(true);
       setHasSearched(true);
+      const curBoosts = boosts ?? addTexts;
+      const curSuppress = suppressions ?? subtractTexts;
       try {
-        const resp: SearchResponse = await api.search(
-          q, topK, fileType || null, null, searchMode, dateFrom || null, dateTo || null,
-        );
+        let resp: SearchResponse;
+        if (curBoosts.length > 0 || curSuppress.length > 0) {
+          resp = await api.refineSearch(
+            q,
+            curBoosts,
+            curSuppress,
+            topK,
+            fileType || null,
+            null,  // pathPrefix -- SearchPage does not hold this in state yet
+            dateFrom || null,
+            dateTo || null,
+            searchMode,
+          );
+        } else {
+          resp = await api.search(
+            q, topK, fileType || null, null, searchMode, dateFrom || null, dateTo || null,
+          );
+        }
         setResults(resp.results);
         setSearchTime(resp.search_time_ms);
       } catch {
@@ -78,7 +147,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     },
-    [topK, fileType, searchMode, dateFrom, dateTo]
+    [topK, fileType, searchMode, dateFrom, dateTo, addTexts, subtractTexts]
   );
 
   // Auto-search from URL param
@@ -104,17 +173,15 @@ export default function SearchPage() {
     const parts = text.split(regex);
     return parts.map((part, i) =>
       regex.test(part) ? (
-        <mark
+        <span
           key={i}
           style={{
-            background: "var(--accent-soft)",
-            color: "var(--text-primary)",
-            borderRadius: "3px",
-            padding: "0 3px",
+            fontWeight: 700,
+            color: "var(--accent)",
           }}
         >
           {part}
-        </mark>
+        </span>
       ) : (
         part
       )
@@ -133,245 +200,578 @@ export default function SearchPage() {
     return "sk-tab-default";
   };
 
+  /* Determine if any filters are active for display */
+  const hasActiveFilters = fileType !== "" || dateFrom !== "" || dateTo !== "" || topK !== 10;
+
   return (
-    <div className="space-y-6">
-      {/* Search Bar -- Step 8: full width, 18px, search icon left, copper bottom border */}
-      <div className="space-y-4">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2"
-            style={{ color: "var(--text-tertiary)" }}
-            strokeWidth={2}
-          />
-          <input
-            type="text"
-            placeholder="Search your files..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && doSearch(query)}
-            className="sk-search-input"
-            style={{
-              width: "100%",
-              paddingLeft: "3rem",
-              paddingRight: "1.25rem",
-              height: "56px",
-              fontSize: "18px",
-              fontFamily: "var(--font-sans)",
-              fontStyle: query ? "normal" : "italic",
-              background: "var(--bg-card)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              boxShadow: "var(--shadow-sm)",
-              transition: "border-color 150ms ease, box-shadow 150ms ease",
-            }}
-          />
-        </div>
-
-        {/* Filters row -- Step 8 & 9 */}
-        <div
-          className="flex flex-wrap items-center gap-x-4 gap-y-3"
-          style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
-        >
-          {/* Search mode segmented control -- Step 9 */}
-          <div className="sk-segmented">
-            {SEARCH_MODES.map((mode) => (
-              <button
-                key={mode.value}
-                type="button"
-                className={`sk-segmented-btn ${searchMode === mode.value ? "active" : ""}`}
-                onClick={() => setSearchMode(mode.value)}
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
-
-          {/* File type dropdown */}
-          <label className="flex items-center gap-2">
-            <span style={{ fontWeight: 500, fontSize: "0.8rem" }}>Type</span>
-            <select
-              value={fileType}
-              onChange={(e) => setFileType(e.target.value)}
-              className="sk-select"
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* ============================================================
+          PILL-SHAPED SEARCH BAR with mode chips inside
+          ============================================================ */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          borderRadius: "20px",
+          padding: "6px 8px 6px 16px",
+          boxShadow: "var(--shadow-sm)",
+          transition: "border-color 150ms ease, box-shadow 150ms ease",
+        }}
+      >
+        <Search
+          style={{ color: "var(--text-tertiary)", flexShrink: 0, width: 18, height: 18 }}
+          strokeWidth={2}
+        />
+        <input
+          type="text"
+          placeholder="Search your files..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && doSearch(query)}
+          style={{
+            flex: 1,
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            fontSize: "15px",
+            fontFamily: "var(--font-sans)",
+            fontStyle: query ? "normal" : "italic",
+            color: "var(--text-primary)",
+            minWidth: 0,
+          }}
+        />
+        {/* Mode chips INSIDE the search bar on the right */}
+        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+          {SEARCH_MODES.map((mode) => (
+            <button
+              key={mode.value}
+              type="button"
+              style={searchMode === mode.value ? CHIP_MODE_ACTIVE : CHIP_MODE}
+              onClick={() => setSearchMode(mode.value)}
             >
-              {FILE_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Result count dropdown -- replaces slider */}
-          <label className="flex items-center gap-2">
-            <span style={{ fontWeight: 500, fontSize: "0.8rem" }}>Results</span>
-            <select
-              value={topK}
-              onChange={(e) => setTopK(Number(e.target.value))}
-              className="sk-select"
-            >
-              {RESULT_COUNT_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </label>
-
-          {/* Date filters */}
-          <label className="flex items-center gap-2">
-            <span style={{ fontWeight: 500, fontSize: "0.8rem" }}>From</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="sk-select"
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            <span style={{ fontWeight: 500, fontSize: "0.8rem" }}>To</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="sk-select"
-            />
-          </label>
-
-          {/* Search timing */}
-          {searchTime !== null && (
-            <span className="ml-auto text-xs" style={{ color: "var(--text-tertiary)" }}>
-              {results.length} results in {searchTime.toFixed(0)}ms
-            </span>
-          )}
+              {mode.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Results -- Step 10, 11 */}
+      {/* ============================================================
+          FILTER CHIPS ROW
+          ============================================================ */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: "6px",
+          minHeight: "28px",
+        }}
+      >
+        {/* Active filter: file type */}
+        {fileType && (
+          <span style={CHIP_ACTIVE}>
+            type: {fileType}
+            <button
+              onClick={() => setFileType("")}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}
+            >
+              <X style={{ width: 10, height: 10 }} />
+            </button>
+          </span>
+        )}
+
+        {/* Active filter: date from */}
+        {dateFrom && (
+          <span style={CHIP_ACTIVE}>
+            from: {dateFrom}
+            <button
+              onClick={() => setDateFrom("")}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}
+            >
+              <X style={{ width: 10, height: 10 }} />
+            </button>
+          </span>
+        )}
+
+        {/* Active filter: date to */}
+        {dateTo && (
+          <span style={CHIP_ACTIVE}>
+            to: {dateTo}
+            <button
+              onClick={() => setDateTo("")}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}
+            >
+              <X style={{ width: 10, height: 10 }} />
+            </button>
+          </span>
+        )}
+
+        {/* Active filter: result count (only if non-default) */}
+        {topK !== 10 && (
+          <span style={CHIP_ACTIVE}>
+            top: {topK}
+            <button
+              onClick={() => setTopK(10)}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}
+            >
+              <X style={{ width: 10, height: 10 }} />
+            </button>
+          </span>
+        )}
+
+        {/* Add-filter chips */}
+        <div style={{ position: "relative" }}>
+          <button
+            style={CHIP_ADD}
+            onClick={() => { setShowTypeMenu(!showTypeMenu); setShowDatePicker(false); setShowCountMenu(false); }}
+          >
+            + type
+          </button>
+          {showTypeMenu && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                zIndex: 50,
+                background: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-md)",
+                padding: "4px",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "3px",
+                maxWidth: "280px",
+              }}
+            >
+              {FILE_TYPE_OPTIONS.filter(o => o.value !== "").map((opt) => (
+                <button
+                  key={opt.value}
+                  style={{
+                    ...CHIP_BASE,
+                    background: fileType === opt.value ? "var(--accent-soft)" : "transparent",
+                    color: fileType === opt.value ? "var(--accent)" : "var(--text-secondary)",
+                    borderColor: fileType === opt.value ? "var(--accent)" : "var(--border)",
+                  }}
+                  onClick={() => { setFileType(opt.value); setShowTypeMenu(false); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ position: "relative" }}>
+          <button
+            style={CHIP_ADD}
+            onClick={() => { setShowDatePicker(!showDatePicker); setShowTypeMenu(false); setShowCountMenu(false); }}
+          >
+            <Calendar style={{ width: 9, height: 9 }} />
+            + date
+          </button>
+          {showDatePicker && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                zIndex: 50,
+                background: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-md)",
+                padding: "8px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+              }}
+            >
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--text-secondary)" }}>
+                From
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  style={{ fontFamily: "var(--font-mono)", fontSize: "10px", border: "1px solid var(--border)", borderRadius: "6px", padding: "2px 6px", outline: "none" }}
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--text-secondary)" }}>
+                To
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  style={{ fontFamily: "var(--font-mono)", fontSize: "10px", border: "1px solid var(--border)", borderRadius: "6px", padding: "2px 6px", outline: "none" }}
+                />
+              </label>
+              <button
+                style={{ ...CHIP_BASE, justifyContent: "center", background: "var(--accent-soft)", color: "var(--accent)", borderColor: "var(--accent)" }}
+                onClick={() => setShowDatePicker(false)}
+              >
+                apply
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ position: "relative" }}>
+          <button
+            style={CHIP_ADD}
+            onClick={() => { setShowCountMenu(!showCountMenu); setShowTypeMenu(false); setShowDatePicker(false); }}
+          >
+            + count
+          </button>
+          {showCountMenu && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                zIndex: 50,
+                background: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-md)",
+                padding: "4px",
+                display: "flex",
+                gap: "3px",
+              }}
+            >
+              {RESULT_COUNT_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  style={{
+                    ...CHIP_BASE,
+                    background: topK === n ? "var(--accent-soft)" : "transparent",
+                    color: topK === n ? "var(--accent)" : "var(--text-secondary)",
+                    borderColor: topK === n ? "var(--accent)" : "var(--border)",
+                  }}
+                  onClick={() => { setTopK(n); setShowCountMenu(false); }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clear all filters */}
+        {hasActiveFilters && (
+          <button
+            style={{ ...CHIP_ADD, color: "var(--danger)", borderColor: "rgba(220,38,38,0.3)" }}
+            onClick={() => { setFileType(""); setDateFrom(""); setDateTo(""); setTopK(10); }}
+          >
+            clear filters
+          </button>
+        )}
+
+        {/* Results count + timing -- pushed to the right */}
+        {searchTime !== null && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontFamily: "'JetBrains Mono', var(--font-mono)",
+              fontSize: "9px",
+              color: "var(--text-tertiary)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {results.length} hits &middot; {searchTime.toFixed(0)}ms
+          </span>
+        )}
+      </div>
+
+      {/* ============================================================
+          QUERY ARITHMETIC: hint + refinement pills
+          ============================================================ */}
+      {!hasSearched && (
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--text-tertiary)", fontStyle: "italic", margin: 0 }}>
+          Use + to add concepts, - to subtract. Example: pricing +recent -draft
+        </p>
+      )}
+
+      {hasRefinements && (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 500, color: "var(--text-secondary)" }}>refinements:</span>
+          {addTexts.map((t, i) => (
+            <span key={`add-${i}`} className="sk-query-tag-positive" style={{ fontSize: "9px", fontFamily: "var(--font-mono)" }}>
+              <Plus style={{ width: 9, height: 9 }} />
+              {t.slice(0, 40)}{t.length > 40 ? "..." : ""}
+              <button
+                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, marginLeft: 2, display: "flex", opacity: 0.6 }}
+                onClick={() => {
+                  const next = addTexts.filter((_, j) => j !== i);
+                  setAddTexts(next);
+                  doSearch(query, next, subtractTexts);
+                }}
+              >
+                <X style={{ width: 9, height: 9 }} />
+              </button>
+            </span>
+          ))}
+          {subtractTexts.map((t, i) => (
+            <span key={`sub-${i}`} className="sk-query-tag-negative" style={{ fontSize: "9px", fontFamily: "var(--font-mono)" }}>
+              <Minus style={{ width: 9, height: 9 }} />
+              {t.slice(0, 40)}{t.length > 40 ? "..." : ""}
+              <button
+                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, marginLeft: 2, display: "flex", opacity: 0.6 }}
+                onClick={() => {
+                  const next = subtractTexts.filter((_, j) => j !== i);
+                  setSubtractTexts(next);
+                  doSearch(query, addTexts, next);
+                }}
+              >
+                <X style={{ width: 9, height: 9 }} />
+              </button>
+            </span>
+          ))}
+          <button
+            style={{ ...CHIP_ADD, color: "var(--text-tertiary)" }}
+            onClick={() => { setAddTexts([]); setSubtractTexts([]); doSearch(query, [], []); }}
+          >
+            clear all
+          </button>
+        </div>
+      )}
+
+      {/* ============================================================
+          RESULTS: dense table / list
+          ============================================================ */}
       {loading ? (
-        /* Loading state: 3 skeleton cards with shimmer -- Step 11 */
-        <div className="space-y-4">
+        /* Loading skeletons styled as table rows */
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+          {/* Table header skeleton */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 4fr 0.7fr 1.2fr 60px",
+              gap: "0",
+              padding: "8px 12px",
+              background: "var(--bg-sidebar)",
+              borderBottom: "2px solid var(--text-primary)",
+            }}
+          >
+            {["FILE", "SNIPPET", "SCORE", "DATE", ""].map((h) => (
+              <span
+                key={h}
+                style={{
+                  fontFamily: "'JetBrains Mono', var(--font-mono)",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
           {[0, 1, 2].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="sk-skeleton" style={{ width: "180px", height: "18px" }} />
-                  <div className="sk-skeleton" style={{ width: "48px", height: "22px", borderRadius: "9999px" }} />
-                </div>
-                <div className="sk-skeleton" style={{ width: "60%", height: "14px" }} />
-                <div className="space-y-2">
-                  <div className="sk-skeleton" style={{ width: "100%", height: "14px" }} />
-                  <div className="sk-skeleton" style={{ width: "90%", height: "14px" }} />
-                  <div className="sk-skeleton" style={{ width: "70%", height: "14px" }} />
-                </div>
-                <div className="sk-skeleton" style={{ width: "100%", height: "4px", borderRadius: "9999px" }} />
-              </CardContent>
-            </Card>
+            <div
+              key={i}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 4fr 0.7fr 1.2fr 60px",
+                gap: "8px",
+                padding: "10px 12px",
+                borderBottom: "1px dashed var(--border)",
+              }}
+            >
+              <div className="sk-skeleton" style={{ width: "80%", height: "12px" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div className="sk-skeleton" style={{ width: "100%", height: "10px" }} />
+                <div className="sk-skeleton" style={{ width: "70%", height: "10px" }} />
+              </div>
+              <div className="sk-skeleton" style={{ width: "40px", height: "12px" }} />
+              <div className="sk-skeleton" style={{ width: "60px", height: "12px" }} />
+              <div className="sk-skeleton" style={{ width: "40px", height: "12px" }} />
+            </div>
           ))}
         </div>
       ) : results.length > 0 ? (
-        /* Results cards -- Step 10 */
-        <div className="space-y-4">
-          {results.map((r, idx) => (
-            <Card
-              key={`${r.file_path}-${r.chunk_index}`}
-              className="sk-result-card sk-fade-up cursor-pointer"
-              style={{ animationDelay: `${idx * 30}ms` }}
-              onClick={() => setSelectedResult(r)}
-            >
-              <CardContent className="p-6">
-                {/* Title row: bold file name + type badge */}
-                <div className="flex items-center gap-3 mb-1">
-                  <span
-                    style={{
-                      color: "var(--text-primary)",
-                      fontWeight: 600,
-                      fontSize: "16px",
-                      fontFamily: "var(--font-sans)",
-                    }}
-                  >
-                    {r.file_name}
-                  </span>
-                  <Badge className={typeTabClass(r.file_type)}>{r.file_type}</Badge>
-                  {r.extractor && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden", background: "var(--bg-card)" }}>
+          {/* Column headers */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 4fr 0.7fr 1.2fr 60px",
+              gap: "0",
+              padding: "8px 12px",
+              background: "var(--bg-sidebar)",
+              borderBottom: "2px solid var(--text-primary)",
+            }}
+          >
+            {["FILE", "SNIPPET", "SCORE", "DATE", ""].map((h) => (
+              <span
+                key={h}
+                style={{
+                  fontFamily: "'JetBrains Mono', var(--font-mono)",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {/* Result rows */}
+          {results.map((r, idx) => {
+            const isTop = idx === 0;
+            return (
+              <div
+                key={`${r.file_path}-${r.chunk_index}`}
+                className="sk-fade-up"
+                onClick={() => setSelectedResult(r)}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 4fr 0.7fr 1.2fr 60px",
+                  gap: "0",
+                  padding: "8px 12px",
+                  alignItems: "start",
+                  cursor: "pointer",
+                  borderBottom: idx < results.length - 1 ? "1px dashed var(--border)" : "none",
+                  background: isTop ? "var(--bg-accent-light)" : "transparent",
+                  transition: "background 100ms ease",
+                  animationDelay: `${idx * 30}ms`,
+                }}
+                onMouseEnter={(e) => { if (!isTop) e.currentTarget.style.background = "var(--bg-hover)"; }}
+                onMouseLeave={(e) => { if (!isTop) e.currentTarget.style.background = "transparent"; }}
+              >
+                {/* FILE column: name + chunk index */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0 }}>
                     <span
-                      className="rounded px-1.5 py-0.5 text-[0.65rem]"
                       style={{
-                        background: "var(--bg-hover)",
-                        color: "var(--text-tertiary)",
-                        fontFamily: "var(--font-mono)",
+                        fontFamily: "'JetBrains Mono', var(--font-mono)",
+                        fontSize: "10.5px",
+                        fontWeight: 600,
+                        color: "var(--text-primary)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {r.extractor}
+                      {r.file_name}
                     </span>
-                  )}
-                  {r.page_number != null && (
-                    <span
-                      className="text-[0.7rem]"
-                      style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
-                    >
-                      p.{r.page_number}
-                    </span>
-                  )}
-                </div>
-
-                {/* Muted file path */}
-                <p
-                  className="truncate mb-3"
-                  style={{
-                    color: "var(--text-tertiary)",
-                    fontSize: "0.75rem",
-                    fontFamily: "var(--font-mono)",
-                  }}
-                >
-                  {r.file_path}
-                </p>
-
-                {/* 3-line preview with ellipsis */}
-                <p
-                  className="line-clamp-3 text-sm mb-3"
-                  style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}
-                >
-                  {highlightQuery(r.chunk_text.slice(0, 300))}
-                </p>
-
-                {/* Bottom row: relevance bar + chunk info */}
-                <div className="flex items-center gap-4">
-                  <div className="sk-relevance-track flex-1">
-                    <div
-                      className="sk-relevance-fill"
-                      style={{ width: `${Math.max(2, Math.round(r.score * 100))}%` }}
-                    />
+                    <Badge className={typeTabClass(r.file_type)} style={{ fontSize: "8px", padding: "1px 5px", flexShrink: 0 }}>
+                      {r.file_type}
+                    </Badge>
                   </div>
                   <span
-                    className="sk-meter"
-                    style={{ fontSize: "0.7rem" }}
-                  >
-                    {(r.score * 100).toFixed(1)}%
-                  </span>
-                  <span
                     style={{
+                      fontFamily: "'JetBrains Mono', var(--font-mono)",
+                      fontSize: "8.5px",
                       color: "var(--text-tertiary)",
-                      fontSize: "0.72rem",
-                      fontFamily: "var(--font-sans)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                     }}
                   >
-                    Chunk {r.chunk_index + 1}
+                    chunk {r.chunk_index + 1}
+                    {r.extractor ? ` \u00b7 ${r.extractor}` : ""}
+                    {r.page_number != null ? ` \u00b7 p.${r.page_number}` : ""}
                   </span>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                {/* SNIPPET column with highlighted query terms */}
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', var(--font-mono)",
+                    fontSize: "10px",
+                    lineHeight: 1.55,
+                    color: "var(--text-secondary)",
+                    margin: 0,
+                    overflow: "hidden",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {highlightQuery(r.chunk_text.slice(0, 200))}
+                </p>
+
+                {/* SCORE column */}
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono', var(--font-mono)",
+                    fontSize: "10px",
+                    fontWeight: 500,
+                    color: isTop ? "var(--accent)" : "var(--text-secondary)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {r.score.toFixed(2)}
+                </span>
+
+                {/* DATE column */}
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono', var(--font-mono)",
+                    fontSize: "9px",
+                    color: "var(--text-tertiary)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  --
+                </span>
+
+                {/* +/- refinement buttons */}
+                <span style={{ display: "flex", alignItems: "center", gap: "3px", justifyContent: "flex-end" }}>
+                  <button
+                    className="sk-refine-btn sk-refine-boost"
+                    title="More like this"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = [...addTexts, r.chunk_text];
+                      setAddTexts(next);
+                      doSearch(query, next, subtractTexts);
+                    }}
+                    style={{ width: 20, height: 20, borderRadius: 5 }}
+                  >
+                    <Plus style={{ width: 11, height: 11 }} />
+                  </button>
+                  <button
+                    className="sk-refine-btn sk-refine-suppress"
+                    title="Less like this"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = [...subtractTexts, r.chunk_text];
+                      setSubtractTexts(next);
+                      doSearch(query, addTexts, next);
+                    }}
+                    style={{ width: 20, height: 20, borderRadius: 5 }}
+                  >
+                    <Minus style={{ width: 11, height: 11 }} />
+                  </button>
+                </span>
+              </div>
+            );
+          })}
         </div>
       ) : hasSearched ? (
-        /* No results state -- Step 11 */
+        /* No results state */
         <div
-          className="flex flex-col items-center justify-center py-16"
-          style={{ color: "var(--text-tertiary)" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "64px 0",
+            color: "var(--text-tertiary)",
+          }}
         >
           <FileSearch
-            className="mb-4"
-            style={{ width: "48px", height: "48px", color: "var(--text-tertiary)", opacity: 0.5 }}
+            style={{ width: 48, height: 48, color: "var(--text-tertiary)", opacity: 0.5, marginBottom: 16 }}
             strokeWidth={1.5}
           />
           <p
@@ -396,14 +796,19 @@ export default function SearchPage() {
           </p>
         </div>
       ) : (
-        /* Empty state before search -- Step 11 */
+        /* Empty state before search */
         <div
-          className="flex flex-col items-center justify-center py-16"
-          style={{ color: "var(--text-tertiary)" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "64px 0",
+            color: "var(--text-tertiary)",
+          }}
         >
           <Search
-            className="mb-4"
-            style={{ width: "56px", height: "56px", color: "var(--accent)", opacity: 0.3 }}
+            style={{ width: 56, height: 56, color: "var(--accent)", opacity: 0.3, marginBottom: 16 }}
             strokeWidth={1.5}
           />
           <p
@@ -417,7 +822,7 @@ export default function SearchPage() {
           >
             Search your files
           </p>
-          <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px", maxWidth: "480px" }}>
             {EXAMPLE_QUERIES.map((eq) => (
               <button
                 key={eq}
@@ -435,7 +840,9 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* File Preview Modal */}
+      {/* ============================================================
+          FILE PREVIEW MODAL (unchanged logic)
+          ============================================================ */}
       <Dialog
         open={selectedResult !== null}
         onOpenChange={(open) => !open && setSelectedResult(null)}

@@ -44,7 +44,7 @@ def sync_pull(
     ),
 ) -> None:
     """Pull a shard snapshot from the remote Qdrant server into the local shard."""
-    from locallens import sync
+    from locallens.integrations import sync
 
     try:
         if incremental:
@@ -67,8 +67,8 @@ def sync_push(
     """Push every locally indexed point to the remote Qdrant server."""
     from qdrant_edge import ScrollRequest
 
-    from locallens import store as st
-    from locallens import sync
+    from locallens.integrations import sync
+    from locallens.pipeline import store as st
 
     st.init()
     shard = st.get_shard()
@@ -154,9 +154,15 @@ def search(
     ),
     format: str = typer.Option("rich", "--format", help="Output format: rich or json"),
 ) -> None:
-    """Semantic search over your indexed files."""
-    from locallens import LocalLens
+    """Semantic search over your indexed files.
 
+    Supports query arithmetic: use + to add concepts and - to subtract.
+    Example: locallens search "pricing +recent -draft"
+    """
+    from locallens import LocalLens
+    from locallens.pipeline.query_parser import parse_query
+
+    parsed = parse_query(query)
     lens = LocalLens()
     results = lens.search(
         query, top_k=top_k, file_type=file_type, path_prefix=path_prefix
@@ -165,8 +171,26 @@ def search(
     if format == "json":
         import json
 
-        print(json.dumps([r.to_dict() for r in results], indent=2))
+        output = [r.to_dict() for r in results]
+        if parsed.is_arithmetic:
+            print(
+                json.dumps(
+                    {"parsed_terms": parsed.to_dict(), "results": output}, indent=2
+                )
+            )
+        else:
+            print(json.dumps(output, indent=2))
         return
+
+    # Show parsed query components when arithmetic is used
+    if parsed.is_arithmetic:
+        parts = []
+        for t in parsed.terms:
+            if t.sign > 0:
+                parts.append(f"[green]+[/green] {t.text}")
+            else:
+                parts.append(f"[red]-[/red] {t.text}")
+        console.print(f"Query arithmetic: {' '.join(parts)}")
 
     if not results:
         console.print("[yellow]No results found.[/yellow]")
@@ -248,7 +272,7 @@ def voice(
 ) -> None:
     """Start the voice interface -- speak to search your files."""
     try:
-        from locallens.voice import start_voice_loop
+        from locallens.integrations.voice import start_voice_loop
     except ImportError:
         console.print(
             "[red]Voice dependencies not installed.[/red]\n"
@@ -256,8 +280,8 @@ def voice(
         )
         raise typer.Exit(code=1)
 
-    from locallens import store as st
-    from locallens.embedder import embed_query
+    from locallens.pipeline import store as st
+    from locallens.pipeline.embedder import embed_query
 
     st.init()
     start_voice_loop(st, embed_query)
@@ -283,8 +307,8 @@ def watch(
         console.print(f"[red]Error: '{folder_path}' is not a valid directory.[/red]")
         raise typer.Exit(code=1)
 
-    from locallens import store as st
     from locallens.config import SUPPORTED_EXTENSIONS
+    from locallens.pipeline import store as st
 
     st.init()
 
@@ -321,7 +345,7 @@ def watch(
             self.events += 1
             console.print(f"[cyan]{event_type}:[/cyan] {path.name} -- re-indexing...")
             try:
-                from locallens.indexer import index_folder
+                from locallens.pipeline.indexer import index_folder
 
                 index_folder(path.parent, force=False)
             except Exception as exc:
@@ -367,7 +391,7 @@ def stats(
         print(json.dumps(result.to_dict(), indent=2))
         return
 
-    from locallens import store as st
+    from locallens.pipeline import store as st
 
     st.init()
     total_chunks = st.count()
@@ -453,7 +477,7 @@ def doctor(
 
     # 1. Qdrant Edge (local shard)
     try:
-        from locallens import store as st
+        from locallens.pipeline import store as st
 
         st.init()
         count = st.count()
@@ -561,7 +585,7 @@ def doctor(
         table.add_row("Disk Space", PASS, f"{free_gb:.1f} GB free")
 
     # 8. Rust extensions
-    from locallens._rust import rust_modules_status
+    from locallens._internals._rust import rust_modules_status
 
     available, modules = rust_modules_status()
     if available:
@@ -572,6 +596,26 @@ def doctor(
             "[yellow]-[/yellow]",
             "Not available (pure-Python fallback)",
         )
+
+    # 9. Schema version
+    try:
+        from locallens.pipeline.schema import get_schema
+
+        schema = get_schema(COLLECTION_NAME)
+        if schema:
+            table.add_row(
+                "Schema Version",
+                PASS,
+                f"v{schema.current.version} ({len(schema.current.payload_fields)} fields)",
+            )
+        else:
+            table.add_row(
+                "Schema Version",
+                "[yellow]-[/yellow]",
+                "Not initialized (run index first)",
+            )
+    except Exception:
+        table.add_row("Schema Version", "[yellow]-[/yellow]", "Could not check")
 
     console.print()
     console.print(table)
@@ -617,7 +661,7 @@ def serve_default(
     """Start a LocalLens server."""
     if mcp:
         try:
-            from locallens.mcp_server import main as mcp_main
+            from locallens.serve.mcp_server import main as mcp_main
         except ImportError:
             console.print(
                 "[red]MCP dependencies not installed.[/red]\n"
@@ -627,7 +671,7 @@ def serve_default(
         mcp_main(port=port or 8811)
     elif api:
         try:
-            from locallens.dashboard import start_api
+            from locallens.serve.dashboard import start_api
         except ImportError:
             console.print(
                 "[red]Server dependencies not installed.[/red]\n"
@@ -637,7 +681,7 @@ def serve_default(
         start_api(port=port or 8000)
     elif ui:
         try:
-            from locallens.dashboard import start_dashboard
+            from locallens.serve.dashboard import start_dashboard
         except ImportError:
             console.print(
                 "[red]Server dependencies not installed.[/red]\n"
@@ -647,3 +691,62 @@ def serve_default(
         start_dashboard(port=port or 8000, with_ui=True)
     elif ctx.invoked_subcommand is None:
         console.print(ctx.get_help())
+
+
+# ── schema command group ────────────────────────────────────────────
+
+schema_app = typer.Typer(
+    name="schema",
+    help="Inspect and manage the collection schema.",
+    no_args_is_help=True,
+)
+app.add_typer(schema_app)
+
+
+@schema_app.command("show")
+def schema_show(
+    collection: str = typer.Option(
+        "locallens", "--collection", help="Collection name."
+    ),
+) -> None:
+    """Print the current schema for a collection."""
+    from locallens.pipeline.schema import get_schema
+
+    schema = get_schema(collection)
+    if schema is None:
+        console.print(f"[yellow]No schema stored for '{collection}'.[/yellow]")
+        console.print("Run [bold]locallens index <folder>[/bold] to initialize.")
+        raise typer.Exit()
+
+    table = Table(title=f"Schema: {collection} (v{schema.current.version})")
+    table.add_column("Field", style="bold")
+    table.add_column("Type")
+    for field_name, field_type in schema.current.payload_fields.items():
+        table.add_row(field_name, field_type)
+    console.print(table)
+
+    console.print(f"\nVector: [cyan]{schema.current.vector_config}[/cyan]")
+    console.print(f"Created: {schema.current.created_at}")
+
+
+@schema_app.command("history")
+def schema_history(
+    collection: str = typer.Option(
+        "locallens", "--collection", help="Collection name."
+    ),
+) -> None:
+    """Print all schema versions for a collection."""
+    from locallens.pipeline.schema import get_schema
+
+    schema = get_schema(collection)
+    if schema is None:
+        console.print(f"[yellow]No schema history for '{collection}'.[/yellow]")
+        raise typer.Exit()
+
+    table = Table(title=f"Schema History: {collection}")
+    table.add_column("Version", style="bold", width=8)
+    table.add_column("Fields", width=12)
+    table.add_column("Created")
+    for v in schema.history:
+        table.add_row(str(v.version), str(len(v.payload_fields)), v.created_at)
+    console.print(table)

@@ -14,6 +14,13 @@ graph TB
         Engine["LocalLens Engine<br/>(Python Library)"]
     end
 
+    subgraph Acceleration["Rust Extensions (optional)"]
+        RustBM25["BM25 Index"]
+        RustChunker["Chunker (27 langs)"]
+        RustWalker["File Walker"]
+        RustWatcher["File Watcher"]
+    end
+
     subgraph Storage
         Edge["Qdrant Edge<br/>(Embedded)"]
         Server["Qdrant Server<br/>(Docker)"]
@@ -33,6 +40,10 @@ graph TB
     Engine --> Edge
     Engine --> ST
     Engine --> Ollama
+    Engine -.->|optional| RustBM25
+    Engine -.->|optional| RustChunker
+    Engine -.->|optional| RustWalker
+    Engine -.->|optional| RustWatcher
 
     REST -.-> Server
 ```

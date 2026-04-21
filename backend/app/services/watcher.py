@@ -90,8 +90,8 @@ def _reindex_single_file(file_path: Path):
     from app.config import settings
     from app.extractors import get_extractor
     from app.services import bm25, embedder, store
-    from locallens._file_core import hash_file
-    from locallens.chunker import chunk_text
+    from locallens._internals._file_core import hash_file
+    from locallens.pipeline.chunker import chunk_text
 
     UUID_NAMESPACE = uuid.UUID("d1b4c5e8-7f3a-4e2b-9a1c-6d8e0f2b3c4a")
 

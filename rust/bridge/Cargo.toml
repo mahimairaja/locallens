@@ -1,0 +1,18 @@
+[package]
+name = "locallens-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "locallens_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+locallens-core-types = { package = "locallens-core", path = "../core" }
+locallens-bm25 = { path = "../bm25" }
+locallens-chunker = { path = "../chunker" }
+locallens-walker = { path = "../walker" }
+locallens-watcher = { path = "../watcher" }
+pyo3 = { workspace = true }

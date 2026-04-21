@@ -14,14 +14,14 @@ from pathlib import Path
 
 import pytest
 
-from locallens._file_core import (
+from locallens._internals._file_core import (
     FileEntry,
     _py_hash_file,
     _PyWalker,
     hash_file,
     walk_and_hash,
 )
-from locallens._rust import HAS_RUST_WALKER
+from locallens._internals._rust import HAS_RUST_WALKER
 
 # ---------------------------------------------------------------------------
 # Fixture tree + helpers

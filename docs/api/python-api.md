@@ -70,7 +70,7 @@ def search(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `query` | `str` | _(required)_ | Search query text |
+| `query` | `str` | _(required)_ | Search query text. Supports query arithmetic: use `+` to add concepts and `-` to subtract (e.g. `"pricing +recent -draft"`) |
 | `top_k` | `int` | `5` | Maximum results to return |
 | `mode` | `str` | `"hybrid"` | `"semantic"`, `"keyword"`, or `"hybrid"` |
 | `file_type` | `str \| None` | `None` | Filter by extension (e.g. `".pdf"`) |
@@ -171,6 +171,45 @@ def files(self) -> list[FileInfo]
 ```python
 for f in lens.files():
     print(f"{f.file_name} ({f.file_type}) — {f.chunk_count} chunks")
+```
+
+## `refine_search()`
+
+Refine a search by boosting or suppressing specific result texts. This is the programmatic equivalent of clicking +/- buttons on search results.
+
+```python
+def refine_search(
+    self,
+    base_query: str,
+    add_texts: list[str] | None = None,
+    subtract_texts: list[str] | None = None,
+    top_k: int = 5,
+    file_type: str | None = None,
+    path_prefix: str | None = None,
+) -> list[SearchResult]
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `base_query` | `str` | _(required)_ | The original search query (may include +/- arithmetic) |
+| `add_texts` | `list[str] \| None` | `None` | Chunk texts to boost (add to query direction) |
+| `subtract_texts` | `list[str] \| None` | `None` | Chunk texts to suppress (subtract from query direction) |
+| `top_k` | `int` | `5` | Maximum results |
+| `file_type` | `str \| None` | `None` | Filter by extension |
+| `path_prefix` | `str \| None` | `None` | Filter by path prefix |
+
+**Returns:** `list[`[`SearchResult`](/api/data-classes#searchresult)`]`
+
+```python
+# First search
+results = lens.search("pricing strategy")
+
+# Boost results like the first hit, suppress results like the third
+refined = lens.refine_search(
+    "pricing strategy",
+    add_texts=[results[0].chunk_text],
+    subtract_texts=[results[2].chunk_text],
+)
 ```
 
 ## `delete()`

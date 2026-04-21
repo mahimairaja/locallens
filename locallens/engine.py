@@ -70,11 +70,24 @@ class LocalLens:
     def _init_store(self) -> None:
         if self._store_initialized:
             return
-        from locallens import store
+        from locallens.pipeline import store
 
         store.init()
         self._store_module = store
         self._store_initialized = True
+
+        # Schema migration check
+        try:
+            from locallens.pipeline.schema import (
+                SchemaBreakingChange,
+                check_and_migrate,
+            )
+
+            check_and_migrate(self._collection_name)
+        except SchemaBreakingChange:
+            raise
+        except Exception:
+            pass  # Non-fatal: schema tracking is best-effort
 
     def _get_store(self) -> Any:
         self._init_store()
@@ -84,7 +97,7 @@ class LocalLens:
         self,
     ) -> tuple[Callable[..., list[float]], Callable[..., list[list[float]]]]:
         if self._embed_query_fn is None:
-            from locallens.embedder import embed_query, embed_texts
+            from locallens.pipeline.embedder import embed_query, embed_texts
 
             self._embed_query_fn = embed_query
             self._embed_texts_fn = embed_texts
@@ -92,7 +105,7 @@ class LocalLens:
         return self._embed_query_fn, self._embed_texts_fn
 
     def _get_bm25(self) -> Any:
-        from locallens import bm25
+        from locallens.pipeline import bm25
 
         bm25.load()
         return bm25
@@ -119,7 +132,7 @@ class LocalLens:
 
         store = self._get_store()
 
-        from locallens.indexer import index_folder
+        from locallens.pipeline.indexer import index_folder
 
         start = time.time()
         index_folder(self._path, force=force)
@@ -159,16 +172,23 @@ class LocalLens:
                 f"Invalid mode '{mode}'. Use 'semantic', 'keyword', or 'hybrid'."
             )
 
+        from locallens.pipeline.query_parser import (
+            combine_query_vectors,
+            parse_query,
+        )
+
+        parsed = parse_query(query)
+
         store = self._get_store()
         embed_query, _ = self._get_embedder()
 
         if mode == "keyword":
-            # BM25 keyword-only search
+            # BM25 keyword-only search (use positive terms only)
             bm25 = self._get_bm25()
-            hits = bm25.search(query, top_k)
+            bm25_query = parsed.base_text if parsed.is_arithmetic else query
+            hits = bm25.search(bm25_query, top_k)
             results: list[SearchResult] = []
             for doc_id, score in hits[:top_k]:
-                # Look up payload from store — best effort
                 try:
                     points = (
                         store.get_points([doc_id])
@@ -184,8 +204,12 @@ class LocalLens:
                     results.append(self._payload_to_result(payload, score))
             return results
 
-        # Semantic search (also used as base for hybrid)
-        vector = embed_query(query)
+        # Semantic search: use combined vector if query has arithmetic
+        if parsed.is_arithmetic:
+            vector = combine_query_vectors(parsed, embed_query)
+        else:
+            vector = embed_query(query)
+
         semantic_hits = store.search(
             vector,
             top_k if mode == "semantic" else top_k * 2,
@@ -201,7 +225,8 @@ class LocalLens:
 
         # Hybrid: combine semantic + BM25 via RRF
         bm25 = self._get_bm25()
-        bm25_hits = bm25.search(query, top_k * 2)
+        bm25_query = parsed.base_text if parsed.is_arithmetic else query
+        bm25_hits = bm25.search(bm25_query, top_k * 2)
 
         if not bm25_hits:
             return [
@@ -228,6 +253,71 @@ class LocalLens:
             if payload:
                 results.append(self._payload_to_result(payload, score))
         return results
+
+    def refine_search(
+        self,
+        base_query: str,
+        add_texts: list[str] | None = None,
+        subtract_texts: list[str] | None = None,
+        top_k: int = 5,
+        file_type: str | None = None,
+        path_prefix: str | None = None,
+    ) -> list[SearchResult]:
+        """Refine a search by boosting or suppressing specific result texts.
+
+        This is the programmatic equivalent of Semantra's +/- buttons on
+        results. The boost/suppress texts are embedded and added/subtracted
+        from the query vector with 0.3 weight.
+
+        Args:
+            base_query: The original search query (may include +/- arithmetic).
+            add_texts: Chunk texts to boost (add to query direction).
+            subtract_texts: Chunk texts to suppress (subtract from query direction).
+            top_k: Maximum results.
+            file_type: Filter by extension.
+            path_prefix: Filter by file path prefix.
+        """
+        import numpy as np
+
+        from locallens.pipeline.query_parser import (
+            combine_query_vectors,
+            parse_query,
+        )
+
+        parsed = parse_query(base_query)
+        embed_query, _ = self._get_embedder()
+
+        if parsed.is_arithmetic:
+            combined = np.array(combine_query_vectors(parsed, embed_query))
+        else:
+            combined = np.array(embed_query(base_query), dtype=np.float64)
+
+        refinement_weight = 0.3
+
+        if add_texts:
+            for text in add_texts:
+                vec = np.array(embed_query(text), dtype=np.float64)
+                combined += refinement_weight * vec
+
+        if subtract_texts:
+            for text in subtract_texts:
+                vec = np.array(embed_query(text), dtype=np.float64)
+                combined -= refinement_weight * vec
+
+        norm = np.linalg.norm(combined)
+        if norm > 0:
+            combined = combined / norm
+
+        store = self._get_store()
+        hits = store.search(
+            combined.tolist(),
+            top_k,
+            file_type=file_type,
+            path_prefix=path_prefix,
+        )
+        return [
+            self._payload_to_result(hit.payload or {}, float(hit.score)) for hit in hits
+        ]
 
     def ask(self, question: str, top_k: int = 3) -> AskResult:
         """Ask a question about indexed files using RAG.
@@ -277,7 +367,7 @@ class LocalLens:
         """
         store = self._get_store()
 
-        from locallens.rag import ask as rag_ask
+        from locallens.pipeline.rag import ask as rag_ask
 
         # Collect source info before streaming
         embed_query, _ = self._get_embedder()
@@ -431,7 +521,7 @@ class LocalLens:
             checks.append(DoctorCheck("Disk Space", "warn", "Could not check"))
 
         # 7. Rust extensions
-        from locallens._rust import rust_modules_status
+        from locallens._internals._rust import rust_modules_status
 
         available, modules = rust_modules_status()
         if available:
@@ -446,6 +536,28 @@ class LocalLens:
                     "Not available (pure-Python fallback)",
                 )
             )
+
+        # 8. Schema version
+        try:
+            from locallens.pipeline.schema import get_schema
+
+            schema = get_schema(self._collection_name)
+            if schema:
+                checks.append(
+                    DoctorCheck(
+                        "Schema Version",
+                        "ok",
+                        f"v{schema.current.version} ({len(schema.current.payload_fields)} fields)",
+                    )
+                )
+            else:
+                checks.append(
+                    DoctorCheck(
+                        "Schema Version", "warn", "Not initialized (run index first)"
+                    )
+                )
+        except Exception:
+            checks.append(DoctorCheck("Schema Version", "warn", "Could not check"))
 
         return checks
 

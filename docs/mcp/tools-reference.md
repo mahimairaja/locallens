@@ -4,13 +4,13 @@ LocalLens exposes 5 tools via the MCP protocol.
 
 ## locallens_search
 
-Search indexed files by semantic meaning, keywords, or hybrid.
+Search indexed files by semantic meaning, keywords, or hybrid. Supports query arithmetic: use `+` to add concepts and `-` to subtract. Example: `"pricing strategy -draft +recent"`.
 
 **Parameters:**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `query` | `string` | _(required)_ | Search query |
+| `query` | `string` | _(required)_ | Search query (supports +/- operators for query arithmetic) |
 | `top_k` | `integer` | `5` | Max results |
 | `file_type` | `string \| null` | `null` | Filter by extension |
 | `mode` | `string` | `"hybrid"` | `"semantic"`, `"keyword"`, or `"hybrid"` |

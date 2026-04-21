@@ -16,7 +16,7 @@ Optional extras:
 - **`locallens/dashboard.py`** — Uvicorn server, optionally mounts the React frontend.
 - **`backend/` (FastAPI) + `frontend/` (React + Vite)** — full web UI that talks to a Qdrant HTTP server in Docker.
 
-**Docs site:** `docs/` contains a VitePress site deployed to GitHub Pages at `https://mahimairaja.github.io/locallens/`. Built with `make docs-build`.
+**Docs site:** `docs/` contains a VitePress site deployed to GitHub Pages at `https://locallens.mahimai.ca/` (custom domain via Cloudflare DNS). Built with `make docs-build`.
 
 ## Common Commands
 
@@ -68,6 +68,65 @@ pre-commit run --all-files     # run all hooks manually
 
 Hooks: trailing-whitespace, end-of-file-fixer, check-toml, check-yaml, check-added-large-files, ruff (with --fix), ruff-format.
 
+### Workflow summary
+
+| Change Type | Commands to Run |
+|---|---|
+| Python code only | `make test` |
+| Rust code only | `make rust-dev && make rust-test` |
+| Both Rust and Python | `make rust-dev && make rust-test && make test` |
+| Frontend only | `cd frontend && npm run build` |
+| Documentation only | `cd docs && npm run docs:build` |
+
+### Code structure
+
+```
+locallens/
+  engine.py           LocalLens class (public API)
+  cli.py              Typer CLI entry point
+  config.py           Configuration
+  models.py           Shared dataclasses
+  fast.py             Rust/Python fallback dispatcher
+  pipeline/           Core search pipeline
+    store.py          Qdrant operations
+    indexer.py        File indexing
+    searcher.py       Search (semantic + hybrid)
+    embedder.py       Embeddings
+    chunker.py        Text chunking
+    bm25.py           BM25 keyword index
+    rag.py            RAG with Ollama
+    schema.py         Schema versioning
+  extractors/         File type extractors
+  serve/              Server modes
+    mcp_server.py     MCP server for agents
+    dashboard.py      Web dashboard
+  integrations/       Optional features
+    voice.py          Voice I/O
+    sync.py           Qdrant sync
+  _internals/         Rust bindings (private)
+backend/              FastAPI web backend
+frontend/             React web app
+rust/                 Rust workspace (performance extensions)
+  core/               Shared types
+  bm25/               BM25 index and query
+  chunker/            Language-aware text chunking
+  walker/             Parallel file walking
+  watcher/            File system watching
+  bridge/             PyO3 Python bindings
+tests/                Python test suite
+benchmarks/           Performance benchmarks and findings
+docs/                 VitePress documentation site
+scripts/              Utility scripts
+assets/               Logo and demo GIF
+```
+
+### Key concepts
+
+- **Engine-first**: LocalLens is a Python library at the core (`locallens.engine.LocalLens`). The CLI, MCP server, and REST API are thin consumers.
+- **Rust extensions are optional**: `pip install "locallens[fast]"` installs `locallens-core` (the Rust package). Without it, pure Python works identically, just slower.
+- **Fallback pattern**: `locallens.fast` tries `import locallens_core`, falls back to pure Python. `locallens._rust` exposes `HAS_RUST_*` flags for granular detection.
+- **Schema evolution**: `locallens/schema.py` tracks Qdrant collection payload schema versions across updates. Additive changes auto-migrate, breaking changes refuse to start.
+
 ## Architecture Notes
 
 ### Engine-first design
@@ -93,7 +152,7 @@ Both trees have near-duplicate pipeline modules (`indexer.py`, `extractors/`, `e
 - **Hybrid:** both combined via Reciprocal Rank Fusion (RRF, k=60)
 
 ### BM25 implementation
-`locallens/bm25.py` loads from a Rust extension (`locallens/_rust.py`) or falls back to pure-Python (`locallens/_bm25_core.py`). The Rust crate is built via maturin (see `Cargo.toml`, `src/`). Uses O(N) incremental indexing with running counters.
+`locallens/pipeline/bm25.py` loads from the Rust extension (`locallens_core`) or falls back to pure-Python (`locallens/_internals/_bm25_core.py`). The Rust workspace is under `rust/` (6 crates). Uses O(N) incremental indexing with running counters.
 
 ### Deterministic point IDs and dedup
 Point IDs are `uuid5(UUID_NAMESPACE, f"{abs_file_path}:{chunk_index}")` using the namespace `d1b4c5e8-7f3a-4e2b-9a1c-6d8e0f2b3c4a` (identical in both trees, do not change it). Dedup is O(1) per file via a filtered `count` query against the `file_hash` keyword payload index. `--force` bypasses the check.
@@ -138,7 +197,7 @@ Four GitHub Actions workflows under `.github/workflows/`:
 
 ## Build System
 
-The project uses **maturin** as its build backend (not hatchling). The Rust extension (`src/`) provides an optimized BM25 implementation. Python 3.11+ required (abi3-py311). Build with `maturin develop` for local dev or let CI handle wheel builds.
+The Python package uses **hatchling** as its build backend. The optional Rust extensions live in `rust/` as a separate maturin-built package (`locallens-core`). Build Rust locally with `cd rust && maturin develop --release`. Pre-built wheels are published to PyPI on release. Install via `pip install "locallens[fast]"`.
 
 ## pyproject.toml extras
 

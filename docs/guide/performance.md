@@ -1,6 +1,6 @@
 # Performance
 
-LocalLens includes optional Rust extensions that accelerate the performance-critical hot paths. The Rust code is compiled into the wheel by default via [maturin](https://www.maturin.rs/) and [PyO3](https://pyo3.rs/).
+LocalLens includes optional Rust extensions that accelerate the performance-critical hot paths. The Rust extensions ship as a separate package (`locallens-core`) built with [maturin](https://www.maturin.rs/) and [PyO3](https://pyo3.rs/). Install via `pip install "locallens[fast]"`.
 
 ## Rust-accelerated modules
 
@@ -76,19 +76,17 @@ If the Rust extension is not available, LocalLens uses the pure-Python implement
 
 ## Building from source
 
-The Rust extension requires a Rust toolchain (1.70+):
+The Rust extension requires a Rust toolchain (1.80+):
 
 ```bash
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Build and install
-pip install -e "."
-# Or explicitly
-maturin develop --release
+# Build and install the Rust extensions
+cd rust && maturin develop --release
 
 # Verify
-python -c "from locallens._rust import HAS_RUST; print(HAS_RUST)"
+python -c "from locallens._internals._rust import HAS_RUST; print(HAS_RUST)"
 ```
 
-Pre-built wheels for Linux, macOS (x86_64 + ARM), and Windows are published to PyPI on each release.
+Pre-built wheels for Linux, macOS (x86_64 + ARM), and Windows are published to PyPI on each release as the `locallens-core` package.

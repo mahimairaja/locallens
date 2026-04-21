@@ -47,6 +47,19 @@ class SearchResponse(BaseModel):
     query: str
     results: list[SearchResult]
     search_time_ms: float
+    parsed_terms: list[dict[str, str]] | None = None
+
+
+class RefineRequest(BaseModel):
+    base_query: str
+    add_texts: list[str] = []
+    subtract_texts: list[str] = []
+    top_k: int = 10
+    file_type: str | None = None
+    path_prefix: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
+    mode: str = "hybrid"
 
 
 class AskRequest(BaseModel):

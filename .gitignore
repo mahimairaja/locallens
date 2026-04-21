@@ -13,6 +13,9 @@ build/
 # Rust / maturin / cibuildwheel build artefacts
 target/
 wheelhouse/
+*.dylib
+*.pyd
+*.dll
 
 # Virtual environments
 .venv/
@@ -202,7 +205,15 @@ activemq-data/
 *.sage.py
 .claude
 prompt.md
+PROMPT.md
 demo.tape
+
+# Benchmark outputs
+bench-results/
+benchmarks/*.json
+
+# Playwright MCP
+.playwright-mcp/
 
 # Environments
 .env

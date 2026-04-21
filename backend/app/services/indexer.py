@@ -13,8 +13,8 @@ from app.config import settings
 from app.extractors import get_extractor
 from app.models import IndexProgress
 from app.services import bm25, embedder, store
-from locallens._file_core import hash_file as _file_hash  # re-export
-from locallens._file_core import walk_and_hash
+from locallens._internals._file_core import hash_file as _file_hash  # re-export
+from locallens._internals._file_core import walk_and_hash
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def _point_id(file_path: str, chunk_index: int) -> str:
 
 def _chunk_text(text: str, size: int, overlap: int, file_type: str = "") -> list[str]:
     """Structure-aware chunking. Delegates to the shared chunker module."""
-    from locallens.chunker import chunk_text as _adaptive_chunk
+    from locallens.pipeline.chunker import chunk_text as _adaptive_chunk
 
     return _adaptive_chunk(text, size, overlap, file_type)
 

@@ -16,6 +16,8 @@ The `locallens` CLI is installed automatically with `pip install locallens`.
 | `watch` | Watch a folder and re-index on changes |
 | `sync pull` | Pull snapshot from remote Qdrant |
 | `sync push` | Push local data to remote Qdrant |
+| `schema show` | Print current collection schema |
+| `schema history` | Print all schema versions |
 
 ## Global options
 

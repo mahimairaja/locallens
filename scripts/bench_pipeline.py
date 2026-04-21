@@ -23,12 +23,12 @@ from pathlib import Path
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 
-from locallens import bm25 as bm25_mod
-from locallens import store as store_mod
-from locallens.chunker import chunk_text
+from locallens.pipeline import bm25 as bm25_mod
+from locallens.pipeline import store as store_mod
+from locallens.pipeline.chunker import chunk_text
 
 try:
-    from locallens.embedder import embed_query, embed_texts  # noqa: F401
+    from locallens.pipeline.embedder import embed_query, embed_texts  # noqa: F401
 
     _EMBEDDER_AVAILABLE = True
 except Exception:
@@ -254,8 +254,8 @@ def bench_walk_and_hash_core(
     """Measures the actual code path indexer.py now takes — Rust when
     HAS_RUST_WALKER, Python otherwise. Reported as a separate stage so
     before/after is visible alongside the rglob + hashlib baseline."""
-    from locallens._file_core import walk_and_hash
-    from locallens._rust import HAS_RUST_WALKER
+    from locallens._internals._file_core import walk_and_hash
+    from locallens._internals._rust import HAS_RUST_WALKER
 
     t0 = time.perf_counter()
     entries = walk_and_hash(root, extensions, max_file_size_bytes=max_file_size_bytes)
@@ -438,7 +438,7 @@ def bench_store_upsert(
     chunks_all: list[list[str]], paths: list[Path], embeddings: list[list[float]]
 ) -> StageResult:
     # Build points shaped like indexer.py does.
-    from locallens.indexer import UUID_NAMESPACE
+    from locallens.pipeline.indexer import UUID_NAMESPACE
 
     store_mod.init()
 

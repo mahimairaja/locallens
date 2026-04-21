@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.5.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "locallens-core"
+description = "Rust-powered performance extensions for LocalLens"
+requires-python = ">=3.11"
+license = "MIT"
+dynamic = ["version"]
+
+[tool.maturin]
+manifest-path = "bridge/Cargo.toml"
+module-name = "locallens_core"
+features = ["pyo3/extension-module", "pyo3/abi3-py311"]
+strip = true

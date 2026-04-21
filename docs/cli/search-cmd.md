@@ -1,6 +1,6 @@
 # locallens search
 
-Semantic search over your indexed files.
+Semantic search over your indexed files. Supports query arithmetic with `+` and `-` operators to add or subtract concepts from the search direction.
 
 ## Usage
 
@@ -38,6 +38,15 @@ locallens search "budget" --file-type .pdf
 
 # Search with path filter
 locallens search "API endpoints" --path-prefix /Users/me/project/src
+
+# Query arithmetic: boost and suppress concepts
+locallens search "pricing strategy +recent -draft"
+
+# Multiple subtractions
+locallens search "authentication -test -mock +production"
+
+# Quoted phrases
+locallens search '+"machine learning" -"neural networks" +transformers'
 ```
 
 ## Rich output
