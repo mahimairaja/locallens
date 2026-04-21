@@ -75,3 +75,20 @@ def has_rust_extension() -> bool:
     subsets of the modules during the rollout.
     """
     return HAS_RUST
+
+
+def rust_modules_status() -> tuple[bool, list[str]]:
+    """Return ``(is_available, active_module_names)`` for doctor output."""
+    if not HAS_RUST:
+        return False, []
+    modules = [
+        name
+        for name, flag in [
+            ("BM25", HAS_RUST_BM25),
+            ("Chunker", HAS_RUST_CHUNKER),
+            ("Walker", HAS_RUST_WALKER),
+            ("Watcher", HAS_RUST_WATCHER),
+        ]
+        if flag
+    ]
+    return True, modules

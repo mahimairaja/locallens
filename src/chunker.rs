@@ -46,25 +46,6 @@ fn sheet_re() -> &'static Regex {
 // ── core helpers ───────────────────────────────────────────────────
 
 /// Simple char-based subdivision with word-boundary respect.
-/// Snap a byte index to the nearest valid UTF-8 char boundary,
-/// searching backward. Returns 0 if no boundary found above 0.
-fn snap_back(text: &str, idx: usize) -> usize {
-    let mut i = idx.min(text.len());
-    while i > 0 && !text.is_char_boundary(i) {
-        i -= 1;
-    }
-    i
-}
-
-/// Snap a byte index forward to the next valid UTF-8 char boundary.
-fn snap_forward(text: &str, idx: usize) -> usize {
-    let mut i = idx.min(text.len());
-    while i < text.len() && !text.is_char_boundary(i) {
-        i += 1;
-    }
-    i
-}
-
 fn subdivide(text: &str, max_size: usize, overlap: usize) -> Vec<String> {
     let text = text.trim();
     if text.is_empty() {
@@ -76,7 +57,7 @@ fn subdivide(text: &str, max_size: usize, overlap: usize) -> Vec<String> {
     let mut start = 0;
 
     while start < text_len {
-        let mut end = snap_back(text, (start + max_size).min(text_len));
+        let mut end = text.floor_char_boundary((start + max_size).min(text_len));
 
         // Walk back to nearest space for word boundary
         if end < text_len {
@@ -93,7 +74,7 @@ fn subdivide(text: &str, max_size: usize, overlap: usize) -> Vec<String> {
         }
 
         let advance = if end > overlap { end - overlap } else { end };
-        start = snap_forward(text, start.max(advance).max(start + 1));
+        start = text.ceil_char_boundary(start.max(advance).max(start + 1));
     }
 
     chunks
@@ -134,23 +115,9 @@ fn split_by_pattern(text: &str, pattern: &Regex) -> Vec<String> {
 
 // ── mode-specific chunkers ─────────────────────────────────────────
 
-fn chunk_markdown(text: &str, size: usize, overlap: usize) -> Vec<String> {
-    let sections = split_by_pattern(text, heading_re());
-    let mut chunks = Vec::new();
-    for section in sections {
-        if section.len() <= size {
-            if section.len() >= MIN_CHUNK {
-                chunks.push(section);
-            }
-        } else {
-            chunks.extend(subdivide(&section, size, overlap));
-        }
-    }
-    chunks
-}
-
-fn chunk_code(text: &str, size: usize, overlap: usize) -> Vec<String> {
-    let sections = split_by_pattern(text, code_boundary_re());
+/// Split text by a boundary regex, then subdivide oversized sections.
+fn chunk_by_boundary(text: &str, pattern: &Regex, size: usize, overlap: usize) -> Vec<String> {
+    let sections = split_by_pattern(text, pattern);
     let mut chunks = Vec::new();
     for section in sections {
         if section.len() <= size {
@@ -182,7 +149,7 @@ fn chunk_paragraphs(text: &str, size: usize, overlap: usize) -> Vec<String> {
             current.push_str(para);
         } else {
             if current.len() >= MIN_CHUNK {
-                chunks.push(current.clone());
+                chunks.push(std::mem::take(&mut current));
             } else if let Some(last) = chunks.last_mut() {
                 last.push_str("\n\n");
                 last.push_str(&current);
@@ -270,9 +237,9 @@ pub fn chunk_text(text: &str, size: usize, overlap: usize, file_type: &str) -> V
 
     let ft = file_type.to_lowercase();
     match ft.as_str() {
-        ".md" | ".txt" => chunk_markdown(text, size, overlap),
+        ".md" | ".txt" => chunk_by_boundary(text, heading_re(), size, overlap),
         ".py" | ".js" | ".ts" | ".go" | ".rs" | ".java" | ".c" | ".cpp" | ".rb" => {
-            chunk_code(text, size, overlap)
+            chunk_by_boundary(text, code_boundary_re(), size, overlap)
         }
         ".pdf" | ".docx" | ".pptx" | ".html" => chunk_paragraphs(text, size, overlap),
         ".xlsx" | ".xls" | ".csv" | ".tsv" => chunk_spreadsheet(text, size, overlap),

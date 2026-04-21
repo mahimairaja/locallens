@@ -30,6 +30,7 @@ _CODE_BOUNDARY_RE = re.compile(
     re.MULTILINE,
 )
 _PARAGRAPH_RE = re.compile(r"\n\s*\n")
+_SHEET_RE = re.compile(r"(?=^Sheet: )", re.MULTILINE)
 
 
 def _subdivide(text: str, max_size: int, overlap: int) -> list[str]:
@@ -179,7 +180,7 @@ def _chunk_paragraphs(text: str, size: int, overlap: int) -> list[str]:
 
 def _chunk_spreadsheet(text: str, size: int, overlap: int) -> list[str]:
     """Each sheet is one chunk unless >1000 chars, then split by row groups."""
-    sheet_blocks = re.split(r"(?=^Sheet: )", text, flags=re.MULTILINE)
+    sheet_blocks = _SHEET_RE.split(text)
     chunks = []
     for block in sheet_blocks:
         block = block.strip()

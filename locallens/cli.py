@@ -561,25 +561,10 @@ def doctor(
         table.add_row("Disk Space", PASS, f"{free_gb:.1f} GB free")
 
     # 8. Rust extensions
-    from locallens._rust import (
-        HAS_RUST,
-        HAS_RUST_BM25,
-        HAS_RUST_CHUNKER,
-        HAS_RUST_WALKER,
-        HAS_RUST_WATCHER,
-    )
+    from locallens._rust import rust_modules_status
 
-    if HAS_RUST:
-        modules = [
-            k
-            for k, v in {
-                "BM25": HAS_RUST_BM25,
-                "Chunker": HAS_RUST_CHUNKER,
-                "Walker": HAS_RUST_WALKER,
-                "Watcher": HAS_RUST_WATCHER,
-            }.items()
-            if v
-        ]
+    available, modules = rust_modules_status()
+    if available:
         table.add_row("Rust Extensions", PASS, f"Active: {', '.join(modules)}")
     else:
         table.add_row(

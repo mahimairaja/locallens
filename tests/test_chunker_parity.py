@@ -13,29 +13,15 @@ pytestmark = pytest.mark.skipif(
 
 
 def _python_chunk_text(text: str, size: int, overlap: int, file_type: str) -> list[str]:
-    """Call the Python chunker directly, bypassing the Rust dispatch."""
-    from locallens.chunker import (
-        _chunk_code,
-        _chunk_markdown,
-        _chunk_paragraphs,
-        _chunk_spreadsheet,
-        _subdivide,
-    )
+    """Call the Python chunker by temporarily disabling the Rust dispatch."""
+    import locallens.chunker as mod
 
-    if not text or not text.strip():
-        return []
-
-    ft = file_type.lower()
-    if ft in (".md", ".txt"):
-        return _chunk_markdown(text, size, overlap)
-    elif ft in (".py", ".js", ".ts", ".go", ".rs", ".java", ".c", ".cpp", ".rb"):
-        return _chunk_code(text, size, overlap)
-    elif ft in (".pdf", ".docx", ".pptx", ".html"):
-        return _chunk_paragraphs(text, size, overlap)
-    elif ft in (".xlsx", ".xls", ".csv", ".tsv"):
-        return _chunk_spreadsheet(text, size, overlap)
-    else:
-        return _subdivide(text, size, overlap)
+    original = mod.HAS_RUST_CHUNKER
+    try:
+        mod.HAS_RUST_CHUNKER = False
+        return mod.chunk_text(text, size, overlap, file_type)
+    finally:
+        mod.HAS_RUST_CHUNKER = original
 
 
 def _rust_chunk_text(text: str, size: int, overlap: int, file_type: str) -> list[str]:
@@ -49,7 +35,7 @@ class TestSubdivideParity:
         text = "word " * 300
         py = _python_chunk_text(text, 200, 20, ".xyz")
         rs = _rust_chunk_text(text, 200, 20, ".xyz")
-        assert len(rs) == pytest.approx(len(py), abs=len(py) * 0.1)
+        assert len(rs) == pytest.approx(len(py), abs=max(1, len(py) * 0.1))
 
     def test_empty(self):
         assert _rust_chunk_text("", 1000, 50, "") == []

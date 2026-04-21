@@ -6,7 +6,9 @@ available, otherwise falls back to Python ``watchdog``.
 
 from __future__ import annotations
 
+import collections
 import logging
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -45,9 +47,10 @@ class FileWatcher:
         self._impl: Any = None
         self._running = False
 
-        # Watchdog fallback state
+        # Watchdog fallback state (thread-safe deque)
         self._observer: Any = None
-        self._events: list[tuple[str, str]] = []
+        self._events: collections.deque[tuple[str, str]] = collections.deque()
+        self._lock = threading.Lock()
 
     @property
     def backend(self) -> str:
@@ -89,9 +92,10 @@ class FileWatcher:
         if self._backend == "rust" and self._impl is not None:
             result: list[tuple[str, str]] = self._impl.poll_events()
             return result
-        # Watchdog fallback: drain the accumulated list
-        events = list(self._events)
-        self._events.clear()
+        # Watchdog fallback: atomically drain the deque
+        with self._lock:
+            events = list(self._events)
+            self._events.clear()
         return events
 
     def __enter__(self) -> FileWatcher:
@@ -116,20 +120,24 @@ class FileWatcher:
                 "Install watchdog: pip install locallens[watch]"
             ) from exc
 
-        events_list = self._events
+        events_deque = self._events
+        lock = self._lock
 
         class _Handler(FileSystemEventHandler):
             def on_created(self, event: FileSystemEvent) -> None:
                 if not event.is_directory:
-                    events_list.append((str(event.src_path), "created"))
+                    with lock:
+                        events_deque.append((str(event.src_path), "created"))
 
             def on_modified(self, event: FileSystemEvent) -> None:
                 if not event.is_directory:
-                    events_list.append((str(event.src_path), "modified"))
+                    with lock:
+                        events_deque.append((str(event.src_path), "modified"))
 
             def on_deleted(self, event: FileSystemEvent) -> None:
                 if not event.is_directory:
-                    events_list.append((str(event.src_path), "deleted"))
+                    with lock:
+                        events_deque.append((str(event.src_path), "deleted"))
 
         handler = _Handler()
         observer = Observer()
