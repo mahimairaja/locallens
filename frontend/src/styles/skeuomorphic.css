@@ -11,7 +11,7 @@
    existing page markup keeps working without a large rewrite.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ---------- Palette (applies to both :root and .dark since
    index.html has html.dark — we redefine what "dark" means.) */
