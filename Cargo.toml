@@ -2,6 +2,7 @@
 name = "locallens-rs"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.80"
 publish = false
 description = "Native BM25 + future chunker/walker acceleration crate for LocalLens."
 

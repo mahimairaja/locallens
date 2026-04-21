@@ -266,11 +266,21 @@ mod tests {
 
     #[test]
     fn subdivide_respects_word_boundary() {
-        let text = "hello world this is a test of word boundary splitting in the chunker";
-        let chunks = subdivide(text, 30, 5);
-        // Every chunk should end at a word boundary (no mid-word splits)
+        // Text must be long enough that chunks exceed MIN_CHUNK (100).
+        let text = "hello world this is a test of word boundary splitting in the chunker module that needs to produce chunks larger than the minimum size threshold ";
+        let text = text.repeat(3); // ~450 chars
+        let chunks = subdivide(&text, 200, 10);
         for chunk in &chunks {
-            assert!(!chunk.ends_with(|c: char| c.is_alphanumeric() && c != ' '));
+            // No chunk should end mid-word (last char should be space or end of text)
+            let trimmed = chunk.trim_end();
+            if trimmed.len() < text.trim().len() {
+                // Not the final chunk: should end at a word boundary
+                assert!(
+                    !trimmed.ends_with(|c: char| c.is_alphanumeric()),
+                    "Chunk ends mid-word: ...{}",
+                    &trimmed[trimmed.len().saturating_sub(20)..]
+                );
+            }
         }
         assert!(!chunks.is_empty());
     }
