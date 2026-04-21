@@ -1,4 +1,4 @@
-.PHONY: setup dev stop test test-quick lint clean docs docs-build
+.PHONY: setup dev stop test test-quick lint clean docs docs-build rust-dev rust-build rust-test bench
 
 VENV := .venv
 UVICORN := $(VENV)/bin/uvicorn
@@ -37,6 +37,18 @@ docs:
 
 docs-build:
 	cd docs && npm run docs:build
+
+rust-dev:
+	maturin develop --release
+
+rust-build:
+	maturin build --release
+
+rust-test:
+	cargo test
+
+bench:
+	python scripts/bench_pipeline.py --files 200 --mock-embed
 
 clean:
 	@echo "Removing caches and build artifacts..."

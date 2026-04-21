@@ -33,6 +33,7 @@ export default defineConfig({
             { text: 'Quick Start', link: '/guide/quick-start' },
             { text: 'Architecture', link: '/guide/architecture' },
             { text: 'Configuration', link: '/guide/configuration' },
+            { text: 'Performance', link: '/guide/performance' },
             { text: 'Supported File Types', link: '/guide/file-types' },
             { text: 'FAQ', link: '/guide/faq' },
           ],

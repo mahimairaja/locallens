@@ -84,8 +84,11 @@ dev = [
     # `maturin develop --release`.
     "maturin>=1.7.0",
 ]
+# The Rust extension is compiled into the wheel by maturin (the build
+# backend). This extra exists for spec compatibility; it is a no-op.
+fast = []
 all = [
-    "locallens[voice,mcp,server,parsing,ocr]",
+    "locallens[voice,mcp,server,parsing,ocr,fast]",
 ]
 
 [project.scripts]

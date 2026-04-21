@@ -12,6 +12,13 @@ Adaptive chunking rules:
 
 import re
 
+from locallens._rust import HAS_RUST_CHUNKER
+
+if HAS_RUST_CHUNKER:
+    from locallens._locallens_rs import (  # type: ignore[import-not-found]
+        chunk_text as _rust_chunk_text,
+    )
+
 MAX_CHUNK = 1000
 MIN_CHUNK = 100
 OVERLAP = 50
@@ -85,6 +92,9 @@ def chunk_text(
     """
     if not text or not text.strip():
         return []
+
+    if HAS_RUST_CHUNKER:
+        return _rust_chunk_text(text, size, overlap, file_type)
 
     ft = file_type.lower()
 
