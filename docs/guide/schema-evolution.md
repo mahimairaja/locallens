@@ -20,7 +20,8 @@ On startup, LocalLens compares the desired schema (defined in code) against the 
 | **New collection** | Stores current schema as v1 |
 | **No change** | Nothing happens |
 | **New payload fields** | Creates new indexes, increments version, logs migration |
-| **Removed fields** | Logs warning, does NOT delete indexes (old data retains fields) |
+| **Removed fields** | Refuses to start with error, requires re-index |
+| **Field type changes** | Refuses to start with error, requires re-index |
 | **Vector config change** | Refuses to start with error, requires re-index |
 
 ## CLI commands
@@ -74,11 +75,11 @@ locallens schema history
 
 ## Breaking changes
 
-If the vector config changes (different dimension or distance metric), LocalLens refuses to start:
+If the vector config changes (different dimension or distance metric), or if payload fields are removed or their types change, LocalLens refuses to start:
 
-```
-Error: Vector config changed for 'locallens'. Re-index required.
-Run: locallens index --force <folder>
+```text
+Error: Schema breaking change for 'locallens': removed fields: ['old_field'].
+Re-index required. Run: locallens index --force <folder>
 ```
 
 This prevents silent data corruption from mismatched embeddings.

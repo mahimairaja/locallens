@@ -312,10 +312,18 @@ def _get_rust_cls():
     broken, which should fail CI rather than silently skip the tests.
     """
     try:
+        from locallens_core import BM25Index  # type: ignore[import-not-found]
+
+        return BM25Index
+    except (ModuleNotFoundError, ImportError):
+        pass
+    try:
         from locallens._locallens_rs import RustBM25  # type: ignore[import-not-found]
+
+        return RustBM25
     except ModuleNotFoundError:
         pytest.skip(_RUST_IMPORT_REASON)
-    return RustBM25
+    return None  # unreachable
 
 
 def test_rust_python_search_parity(tmp_path: Path) -> None:

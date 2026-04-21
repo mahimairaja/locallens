@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -66,8 +67,6 @@ def _save_all(schemas: dict[str, CollectionSchema]) -> None:
     with open(tmp, "w") as f:
         f.write(data)
         f.flush()
-        import os
-
         os.fsync(f.fileno())
     os.replace(tmp, _SCHEMA_FILE)
 

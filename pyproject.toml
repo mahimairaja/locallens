@@ -154,6 +154,8 @@ ignore = [
 "tests/*" = ["F401", "F811"]
 "locallens/integrations/voice.py" = ["B023"]
 "locallens/fast.py" = ["F401", "I001"]
+"locallens/pipeline/bm25.py" = ["I001"]
+"backend/app/services/bm25.py" = ["I001"]
 
 [tool.mypy]
 python_version = "3.11"

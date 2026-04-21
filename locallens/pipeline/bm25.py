@@ -18,9 +18,12 @@ from pathlib import Path
 from locallens._internals._rust import HAS_RUST_BM25
 
 if HAS_RUST_BM25:
-    from locallens._locallens_rs import (
-        RustBM25 as _IndexImpl,  # type: ignore[attr-defined]
-    )
+    try:
+        from locallens_core import BM25Index as _IndexImpl  # type: ignore[import-not-found,assignment]
+    except ImportError:
+        from locallens._locallens_rs import (  # type: ignore[attr-defined,no-redef]
+            RustBM25 as _IndexImpl,
+        )
 else:
     from locallens._internals._bm25_core import (
         _Bm25Index as _IndexImpl,  # type: ignore[assignment]

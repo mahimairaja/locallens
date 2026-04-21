@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -57,16 +58,19 @@ def bench_bm25(corpus: list[tuple[str, str]], queries: list[str]) -> dict[str, f
 
     tf = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
     tf.close()
-    idx = _Bm25Index(Path(tf.name))
-    t0 = time.perf_counter()
-    for doc_id, text in corpus:
-        idx.add_internal(doc_id, text)
-    results["python_build_ms"] = (time.perf_counter() - t0) * 1000
+    try:
+        idx = _Bm25Index(Path(tf.name))
+        t0 = time.perf_counter()
+        for doc_id, text in corpus:
+            idx.add_internal(doc_id, text)
+        results["python_build_ms"] = (time.perf_counter() - t0) * 1000
 
-    t0 = time.perf_counter()
-    for q in queries:
-        idx.search(q)
-    results["python_query_ms"] = (time.perf_counter() - t0) * 1000
+        t0 = time.perf_counter()
+        for q in queries:
+            idx.search(q)
+        results["python_query_ms"] = (time.perf_counter() - t0) * 1000
+    finally:
+        os.unlink(tf.name)
 
     # Rust BM25
     try:
@@ -74,15 +78,18 @@ def bench_bm25(corpus: list[tuple[str, str]], queries: list[str]) -> dict[str, f
 
         rtf = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
         rtf.close()
-        ridx = BM25Index(rtf.name)
-        t0 = time.perf_counter()
-        ridx.build(corpus)
-        results["rust_build_ms"] = (time.perf_counter() - t0) * 1000
+        try:
+            ridx = BM25Index(rtf.name)
+            t0 = time.perf_counter()
+            ridx.build(corpus)
+            results["rust_build_ms"] = (time.perf_counter() - t0) * 1000
 
-        t0 = time.perf_counter()
-        for q in queries:
-            ridx.search(q)
-        results["rust_query_ms"] = (time.perf_counter() - t0) * 1000
+            t0 = time.perf_counter()
+            for q in queries:
+                ridx.search(q)
+            results["rust_query_ms"] = (time.perf_counter() - t0) * 1000
+        finally:
+            os.unlink(rtf.name)
     except ImportError:
         results["rust_build_ms"] = -1
         results["rust_query_ms"] = -1
@@ -96,11 +103,11 @@ def bench_chunking(corpus: list[tuple[str, str]]) -> dict[str, float]:
     texts = [(text, ".md") for _, text in corpus[:1000]]
 
     # Python chunker
-    from locallens.pipeline.chunker import _chunk_markdown
+    from locallens.pipeline.chunker import chunk_text
 
     t0 = time.perf_counter()
-    for text, _ in texts:
-        _chunk_markdown(text, 500, 50)
+    for text, ft in texts:
+        chunk_text(text, 500, 50, ft)
     results["python_ms"] = (time.perf_counter() - t0) * 1000
 
     # Rust chunker
@@ -123,9 +130,9 @@ def bench_walking(n_files: int) -> dict[str, float]:
     with tempfile.TemporaryDirectory() as d:
         _generate_files(Path(d), n_files)
 
-        # Python walk
+        # Python walk (files only, to match walk_files)
         t0 = time.perf_counter()
-        list(Path(d).rglob("*"))
+        [p for p in Path(d).rglob("*") if p.is_file()]
         results["python_ms"] = (time.perf_counter() - t0) * 1000
 
         # Rust walk

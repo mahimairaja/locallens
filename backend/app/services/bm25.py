@@ -17,12 +17,13 @@ from locallens._internals._rust import HAS_RUST_BM25
 logger = logging.getLogger(__name__)
 
 if HAS_RUST_BM25:
-    from locallens._locallens_rs import RustBM25  # type: ignore[attr-defined]
+    try:
+        from locallens_core import BM25Index as _RustBM25Cls  # type: ignore[import-not-found]
+    except ImportError:
+        from locallens._locallens_rs import RustBM25 as _RustBM25Cls  # type: ignore[attr-defined,no-redef]
 
     def _make_index(path: Path) -> object:
-        # RustBM25 doesn't take a logger kwarg (logging is done on the Python
-        # side of the call). The fallback branch passes logger to _Bm25Index.
-        return RustBM25(path)
+        return _RustBM25Cls(path)
 else:
     from locallens._internals._bm25_core import _Bm25Index
 
