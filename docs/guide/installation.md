@@ -51,9 +51,19 @@ Full React web UI with FastAPI backend:
 pip install "locallens[server]"
 ```
 
+## With Rust acceleration
+
+Installs `locallens-core`, the optional Rust extension package for 5-10x faster BM25, chunking, and file walking on large corpora:
+
+```bash
+pip install "locallens[fast]"
+```
+
+Without this, LocalLens uses pure Python for everything. Same results, just slower on 10k+ file corpora.
+
 ## Everything
 
-Install all optional dependencies at once:
+Install all optional dependencies at once (includes Rust extensions):
 
 ```bash
 pip install "locallens[all]"

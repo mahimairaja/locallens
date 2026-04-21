@@ -34,19 +34,20 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.toml', 'rust/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Install Python tooling (creates .venv so maturin-develop works)
+      - name: Install Python tooling
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip maturin coverage
+          .venv/bin/pip install -e ".[test]"
           .venv/bin/pip install -r backend/requirements.txt
 
-      - name: Build Rust extension + install package (editable, with test extras)
-        run: .venv/bin/maturin develop --release --extras test
+      - name: Build Rust extension (locallens-core from rust/ workspace)
+        run: cd rust && ../.venv/bin/maturin develop --release
 
       - name: Wait for Qdrant to be ready
         run: |
