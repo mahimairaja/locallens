@@ -120,26 +120,18 @@ impl RustWatcher {
         std::mem::take(&mut *queue)
     }
 
-    fn __enter__(slf: PyRef<'_, Self>) -> PyResult<PyRef<'_, Self>> {
-        // Need to call start, but we have a shared ref. Use interior
-        // mutability via Python: call the method on the object.
-        let py = slf.py();
-        slf.into_pyobject(py)
-            .unwrap()
-            .call_method0("start")?;
-        // Re-borrow
-        Err(pyo3::exceptions::PyRuntimeError::new_err(
-            "use the context manager on a variable, e.g.: w = RustWatcher(...); w.start()",
-        ))
+    fn __enter__(&mut self) -> PyResult<()> {
+        self.start()
     }
 
-    #[allow(unused_variables)]
+    #[pyo3(signature = (exc_type=None, exc_val=None, exc_tb=None))]
     fn __exit__(
         &mut self,
         exc_type: Option<&Bound<'_, PyAny>>,
         exc_val: Option<&Bound<'_, PyAny>>,
         exc_tb: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<bool> {
+        let _ = (exc_type, exc_val, exc_tb);
         self.stop()?;
         Ok(false) // Don't suppress exceptions
     }
