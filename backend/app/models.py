@@ -56,6 +56,9 @@ class RefineRequest(BaseModel):
     subtract_texts: list[str] = []
     top_k: int = 10
     file_type: str | None = None
+    path_prefix: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
     mode: str = "hybrid"
 
 

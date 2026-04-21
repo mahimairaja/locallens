@@ -203,6 +203,9 @@ def refine_search(
     subtract_texts: list[str] | None = None,
     top_k: int = 10,
     file_type: str | None = None,
+    path_prefix: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     mode: str = "hybrid",
     collection: str | None = None,
 ) -> SearchResponse:
@@ -236,7 +239,12 @@ def refine_search(
     if norm > 0:
         combined = combined / norm
 
-    query_filter = store.build_search_filter(file_type=file_type)
+    query_filter = store.build_search_filter(
+        file_type=file_type,
+        path_prefix=path_prefix,
+        date_from=date_from,
+        date_to=date_to,
+    )
     points = store.search(
         combined.tolist(), top_k, query_filter=query_filter, collection=collection
     )

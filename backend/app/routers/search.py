@@ -54,6 +54,9 @@ async def do_refine(
         subtract_texts=req.subtract_texts,
         top_k=req.top_k,
         file_type=req.file_type,
+        path_prefix=req.path_prefix,
+        date_from=req.date_from,
+        date_to=req.date_to,
         mode=req.mode,
         collection=collection,
     )

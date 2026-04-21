@@ -152,6 +152,9 @@ export const api = {
     subtractTexts: string[],
     topK: number = 10,
     fileType?: string | null,
+    pathPrefix?: string | null,
+    dateFrom?: string | null,
+    dateTo?: string | null,
     mode?: string,
   ) =>
     post<SearchResponse>("/api/search/refine", {
@@ -160,6 +163,9 @@ export const api = {
       subtract_texts: subtractTexts,
       top_k: topK,
       file_type: fileType || null,
+      path_prefix: pathPrefix || null,
+      date_from: dateFrom || null,
+      date_to: dateTo || null,
       mode: mode || "hybrid",
     }),
 

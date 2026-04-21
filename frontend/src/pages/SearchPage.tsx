@@ -124,7 +124,15 @@ export default function SearchPage() {
         let resp: SearchResponse;
         if (curBoosts.length > 0 || curSuppress.length > 0) {
           resp = await api.refineSearch(
-            q, curBoosts, curSuppress, topK, fileType || null, searchMode,
+            q,
+            curBoosts,
+            curSuppress,
+            topK,
+            fileType || null,
+            null,  // pathPrefix -- SearchPage does not hold this in state yet
+            dateFrom || null,
+            dateTo || null,
+            searchMode,
           );
         } else {
           resp = await api.search(

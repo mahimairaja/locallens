@@ -61,9 +61,13 @@ if _ext is not None:
     HAS_RUST_CHUNKER = bool(getattr(_ext, "HAS_CHUNKER", False)) or hasattr(
         _ext, "chunk_text"
     )
-    HAS_RUST_WALKER = bool(getattr(_ext, "HAS_WALKER", False)) or hasattr(
-        _ext, "walk_files"
-    )
+    # Only the legacy `RustWalker` class exposes `hash_file` + `walk_and_hash`
+    # which is what `locallens._internals._file_core.walk_and_hash` needs.
+    # The new `locallens_core` workspace has `walk_files` / `extract_texts`
+    # functions but NO combined walk+hash primitive, so it can't accelerate
+    # the indexing hot path. Report inactive there rather than lie to
+    # `locallens doctor`.
+    HAS_RUST_WALKER = hasattr(_ext, "RustWalker")
     HAS_RUST_WATCHER = bool(getattr(_ext, "HAS_WATCHER", False)) or hasattr(
         _ext, "FileWatcher"
     )
