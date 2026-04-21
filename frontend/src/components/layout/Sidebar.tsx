@@ -144,7 +144,7 @@ export function Sidebar() {
         className="flex h-16 items-center gap-3 px-5"
         style={{ borderBottom: "1px solid var(--border)" }}
       >
-        <Search className="h-5 w-5" style={{ color: "var(--accent)" }} strokeWidth={2.2} />
+        <img src="/logo.png" alt="LocalLens" style={{ width: 28, height: 28 }} />
         <span
           className="text-lg"
           style={{

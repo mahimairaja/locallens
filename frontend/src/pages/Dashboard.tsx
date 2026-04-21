@@ -130,6 +130,13 @@ export default function Dashboard() {
           0 files &middot; 0 chunks
         </p>
 
+        {/* Logo */}
+        <img
+          src="/logo.png"
+          alt="LocalLens"
+          style={{ width: 64, height: 64, marginBottom: "1.5rem" }}
+        />
+
         {/* Headline */}
         <h1
           style={{

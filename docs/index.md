@@ -4,7 +4,10 @@ layout: home
 hero:
   name: LocalLens
   text: Semantic File Search for AI Agents
-  tagline: Index your files. Search by meaning. Ask questions. 100% offline. Ships as a Python library, CLI, and MCP server.
+  tagline: Index, search, and ask questions about your local files. Ships as a Python library, CLI, and MCP server. 100% offline.
+  image:
+    src: /hero.svg
+    alt: LocalLens pipeline illustration
   actions:
     - theme: brand
       text: Get Started
@@ -18,19 +21,18 @@ hero:
 
 features:
   - title: Python Library
-    details: "from locallens import LocalLens — import it, use it, done. No server, no Docker."
+    details: "from locallens import LocalLens -- import it, use it, done. No server, no Docker needed."
   - title: MCP Server
-    details: "locallens serve --mcp — one command to become a tool for Claude Code, Cursor, and any MCP client."
+    details: "locallens serve --mcp -- one command to become a tool for Claude Code, Cursor, and any MCP client."
   - title: 100% Offline
-    details: "Qdrant Edge + local embeddings + Ollama. Your files never leave your machine."
+    details: "Qdrant Edge + local embeddings + Ollama. Your files never leave your machine. Zero network calls."
 ---
 
-<style>
-:root {
-  --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(135deg, #C67B3C, #D4934E);
-}
-</style>
+## Install in 10 seconds
+
+```bash
+pip install locallens
+```
 
 ## Quick Examples
 
@@ -46,9 +48,9 @@ print(results[0].file_name, results[0].score)
 ```
 
 ```bash [CLI]
-pip install locallens
 locallens index ~/Documents
 locallens search "quarterly revenue report"
+locallens ask "What was the Q3 revenue?"
 ```
 
 ```json [MCP (Claude Desktop)]
@@ -64,3 +66,15 @@ locallens search "quarterly revenue report"
 ```
 
 :::
+
+## Powered by
+
+<div style="display: flex; gap: 2rem; justify-content: center; align-items: center; padding: 1.5rem 0; flex-wrap: wrap; opacity: 0.6;">
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">Qdrant Edge</span>
+  <span style="color: var(--vp-c-border);">|</span>
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">sentence-transformers</span>
+  <span style="color: var(--vp-c-border);">|</span>
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">Ollama</span>
+  <span style="color: var(--vp-c-border);">|</span>
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">PyO3 + Rust</span>
+</div>

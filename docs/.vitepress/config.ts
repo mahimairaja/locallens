@@ -7,11 +7,11 @@ export default defineConfig({
   appearance: false,
 
   head: [
-    ['link', { rel: 'icon', href: '/locallens/logo.svg' }],
+    ['link', { rel: 'icon', href: '/locallens/logo.png' }],
   ],
 
   themeConfig: {
-    logo: '/logo.svg',
+    logo: '/logo.png',
     siteTitle: 'LocalLens',
 
     nav: [

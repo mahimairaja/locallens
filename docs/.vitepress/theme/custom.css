@@ -1,13 +1,200 @@
+/* LocalLens Docs — warm design system matching the web app */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
+  /* ── Brand ────────────────────────────────────────── */
   --vp-c-brand-1: #C67B3C;
   --vp-c-brand-2: #B56D30;
   --vp-c-brand-3: #A46028;
   --vp-c-brand-soft: rgba(198, 123, 60, 0.14);
 
+  /* ── Backgrounds — warm off-white ─────────────────── */
+  --vp-c-bg: #FAFAF8;
+  --vp-c-bg-alt: #F5F2EE;
+  --vp-c-bg-elv: #FFFFFF;
+  --vp-c-bg-soft: #F5F2EE;
+
+  /* ── Text — warm neutrals ─────────────────────────── */
+  --vp-c-text-1: #1C1917;
+  --vp-c-text-2: #78716C;
+  --vp-c-text-3: #A8A29E;
+
+  /* ── Borders — warm stone ─────────────────────────── */
+  --vp-c-border: #E7E5E4;
+  --vp-c-divider: #E7E5E4;
+  --vp-c-gutter: #E7E5E4;
+
+  /* ── Code blocks — warm dark ──────────────────────── */
+  --vp-code-block-bg: #1C1917;
+  --vp-code-tab-active-bar-color: #C67B3C;
+  --vp-code-copy-code-hover-bg: rgba(198, 123, 60, 0.1);
+
+  /* ── Sidebar ──────────────────────────────────────── */
+  --vp-sidebar-bg-color: #F5F2EE;
+
+  /* ── Nav ───────────────────────────────────────────── */
+  --vp-nav-bg-color: rgba(250, 248, 243, 0.85);
+
+  /* ── Hero ──────────────────────────────────────────── */
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(135deg, #C67B3C, #D4934E);
+  --vp-home-hero-image-background-image: radial-gradient(
+    circle at 50% 50%,
+    rgba(198, 123, 60, 0.12) 0%,
+    transparent 70%
+  );
 
+  /* ── Buttons ──────────────────────────────────────── */
   --vp-button-brand-bg: #C67B3C;
   --vp-button-brand-hover-bg: #B56D30;
   --vp-button-brand-active-bg: #A46028;
+  --vp-button-brand-text: #FFFFFF;
+  --vp-button-alt-bg: #F5F2EE;
+  --vp-button-alt-hover-bg: #E7E5E4;
+  --vp-button-alt-text: #1C1917;
+
+  /* ── Custom containers ────────────────────────────── */
+  --vp-custom-block-tip-bg: rgba(198, 123, 60, 0.08);
+  --vp-custom-block-tip-text: #1C1917;
+  --vp-custom-block-tip-code-bg: rgba(198, 123, 60, 0.12);
+  --vp-custom-block-warning-bg: rgba(217, 119, 6, 0.08);
+  --vp-custom-block-danger-bg: rgba(220, 38, 38, 0.06);
+}
+
+/* ── Typography ─────────────────────────────────────── */
+
+:root {
+  --vp-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+}
+
+/* ── Inline code — copper tint ──────────────────────── */
+
+:not(pre) > code {
+  background-color: rgba(198, 123, 60, 0.08) !important;
+  color: #A46028 !important;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.9em;
+}
+
+/* ── Sidebar active item — copper indicator ─────────── */
+
+.VPSidebarItem.is-active > .item > .indicator {
+  background-color: var(--vp-c-brand-1) !important;
+}
+
+.VPSidebarItem.is-active > .item .link > .text {
+  color: var(--vp-c-brand-1) !important;
+  font-weight: 600;
+}
+
+/* ── Feature cards — warm shadows ───────────────────── */
+
+.VPFeature {
+  border: 1px solid var(--vp-c-border) !important;
+  background-color: var(--vp-c-bg-elv) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  transition: box-shadow 0.2s ease, transform 0.2s ease !important;
+}
+
+.VPFeature:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03) !important;
+  transform: translateY(-2px);
+}
+
+.VPFeature .title {
+  color: var(--vp-c-brand-1) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Tables — warmer styling ────────────────────────── */
+
+.vp-doc table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.vp-doc th {
+  background-color: var(--vp-c-bg-alt) !important;
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc td,
+.vp-doc th {
+  border-color: var(--vp-c-border) !important;
+}
+
+.vp-doc tr:hover td {
+  background-color: rgba(198, 123, 60, 0.03);
+}
+
+/* ── Nav — subtle copper accent on hover ────────────── */
+
+.VPNavBarMenuLink:hover .text,
+.VPNavBarMenuLink.active .text {
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* ── Footer — warm tint ─────────────────────────────── */
+
+.VPFooter {
+  background-color: var(--vp-c-bg-alt) !important;
+  border-top-color: var(--vp-c-border) !important;
+}
+
+/* ── Custom block (tip) — copper accent bar ─────────── */
+
+.custom-block.tip {
+  border-color: var(--vp-c-brand-1) !important;
+}
+
+.custom-block.tip .custom-block-title {
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* ── Hero section enhancements ──────────────────────── */
+
+.VPHero .tagline {
+  color: var(--vp-c-text-2) !important;
+  max-width: 560px;
+}
+
+.VPHero .actions .action {
+  transition: transform 0.15s ease !important;
+}
+
+.VPHero .actions .action:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Code group tabs — copper active ────────────────── */
+
+.vp-code-group .tabs label.active {
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* ── Scrollbar — subtle warm tint ───────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vp-c-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-c-text-3);
 }
