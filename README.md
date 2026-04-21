@@ -10,7 +10,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![Qdrant Edge](https://img.shields.io/badge/Qdrant-Edge-C67B3C)
 ![Tests](https://github.com/mahimairaja/locallens/actions/workflows/test.yml/badge.svg)
-[![Documentation](https://img.shields.io/badge/docs-locallens-C67B3C)](https://mahimairaja.github.io/locallens/)
+[![Documentation](https://img.shields.io/badge/docs-locallens-C67B3C)](https://locallens.mahimai.ca/)
 
 ## What It Does
 
@@ -25,7 +25,7 @@
 
 ## Quickstart
 
-> Full documentation at [mahimairaja.github.io/locallens](https://mahimairaja.github.io/locallens/)
+> Full documentation at [locallens.mahimai.ca](https://locallens.mahimai.ca/)
 
 ### Prerequisites
 

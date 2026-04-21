@@ -16,7 +16,7 @@ Optional extras:
 - **`locallens/dashboard.py`** — Uvicorn server, optionally mounts the React frontend.
 - **`backend/` (FastAPI) + `frontend/` (React + Vite)** — full web UI that talks to a Qdrant HTTP server in Docker.
 
-**Docs site:** `docs/` contains a VitePress site deployed to GitHub Pages at `https://mahimairaja.github.io/locallens/`. Built with `make docs-build`.
+**Docs site:** `docs/` contains a VitePress site deployed to GitHub Pages at `https://locallens.mahimai.ca/` (custom domain via Cloudflare DNS). Built with `make docs-build`.
 
 ## Common Commands
 

@@ -3,11 +3,11 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'LocalLens',
   description: 'Semantic file search engine for AI agents. 100% offline.',
-  base: '/locallens/',
+  base: '/',
   appearance: false,
 
   head: [
-    ['link', { rel: 'icon', href: '/locallens/logo.png' }],
+    ['link', { rel: 'icon', href: '/logo.png' }],
   ],
 
   themeConfig: {
