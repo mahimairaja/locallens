@@ -1,8 +1,17 @@
 # Claude Code Integration
 
-Use LocalLens as an MCP server in [Claude Code](https://claude.ai/code) to let Claude search and understand your local files.
+Use LocalLens in [Claude Code](https://claude.ai/code) via **two integration methods**:
 
-## Setup
+1. **MCP server** (programmatic tools) -- Claude decides when to call LocalLens
+2. **Slash commands plugin** (`/locallens:search`, `/locallens:index`, etc.) -- explicit invocation
+
+Pick one or both.
+
+## Method 1: MCP server
+
+Claude calls LocalLens tools automatically when relevant.
+
+### Setup
 
 1. Install LocalLens with MCP support:
 
@@ -69,3 +78,36 @@ Pass environment variables to customize the MCP server:
   }
 }
 ```
+
+## Method 2: Slash commands plugin
+
+Prefer explicit `/locallens:*` commands? Install the Claude Code plugin instead.
+
+### Install
+
+```bash
+# Clone the repo (once)
+git clone https://github.com/mahimairaja/locallens.git
+
+# Link the plugin directory into Claude Code's plugins folder
+mkdir -p ~/.claude/plugins
+ln -s "$(pwd)/locallens/claude-code-plugin" ~/.claude/plugins/locallens
+```
+
+Restart Claude Code or run `/reload-plugins`.
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `/locallens:search <query>` | Semantic search (supports `+`/`-` arithmetic) |
+| `/locallens:index [path]` | Index a folder (defaults to CWD) |
+| `/locallens:ask <question>` | RAG Q&A with citations (requires Ollama) |
+| `/locallens:doctor` | Check setup and dependencies |
+
+### MCP vs plugin
+
+- **MCP server**: Claude decides when to use LocalLens. Good when you want search "just to happen" in context.
+- **Plugin**: Explicit invocation. Good when you want a predictable entry point and don't want Claude making search decisions on its own.
+
+You can install both at the same time.

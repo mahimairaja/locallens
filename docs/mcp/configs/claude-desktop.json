@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "locallens": {
+      "command": "locallens",
+      "args": ["serve", "--mcp"]
+    }
+  }
+}

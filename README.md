@@ -68,6 +68,60 @@ locallens index ~/Documents    # dual-writes to local shard AND Docker Qdrant
 
 The web app sees everything the CLI indexes -- instantly, no extra step. See [Sync commands](#sync) below for manual push/pull.
 
+## Agent Integrations
+
+LocalLens works with every major AI agent:
+
+### Claude Code
+
+```bash
+claude mcp add locallens -- locallens serve --mcp
+```
+
+Or install the [slash-commands plugin](./claude-code-plugin/) for `/locallens:search`, `/locallens:index`, `/locallens:ask`, `/locallens:doctor`.
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{"mcpServers": {"locallens": {"command": "locallens", "args": ["serve", "--mcp"]}}}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json`:
+
+```json
+{"mcpServers": {"locallens": {"command": "locallens", "args": ["serve", "--mcp"]}}}
+```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{"mcpServers": {"locallens": {"command": "locallens", "args": ["serve", "--mcp"]}}}
+```
+
+### OpenClaw
+
+```bash
+clawhub install locallens
+```
+
+Or install manually from [`openclaw-skill/`](./openclaw-skill/).
+
+### Any MCP client
+
+```bash
+locallens serve --mcp
+```
+
+Exposes: `locallens_search`, `locallens_ask`, `locallens_index`, `locallens_status`, `locallens_files`.
+
+See the full integration docs at [locallens.mahimai.ca/mcp/setup](https://locallens.mahimai.ca/mcp/setup).
+
 ## Architecture
 
 ```mermaid
