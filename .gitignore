@@ -206,6 +206,7 @@ activemq-data/
 .claude
 prompt.md
 PROMPT.md
+SUBMISSIONS.md
 demo.tape
 
 # Benchmark outputs

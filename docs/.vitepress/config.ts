@@ -72,8 +72,11 @@ export default defineConfig({
           items: [
             { text: 'Setup', link: '/mcp/setup' },
             { text: 'Tools Reference', link: '/mcp/tools-reference' },
-            { text: 'Claude Code Integration', link: '/mcp/claude-code' },
-            { text: 'Claude Desktop Integration', link: '/mcp/claude-desktop' },
+            { text: 'Claude Code', link: '/mcp/claude-code' },
+            { text: 'Claude Desktop', link: '/mcp/claude-desktop' },
+            { text: 'Cursor', link: '/mcp/cursor' },
+            { text: 'Windsurf', link: '/mcp/windsurf' },
+            { text: 'OpenClaw', link: '/mcp/openclaw' },
             { text: 'Custom MCP Clients', link: '/mcp/custom-clients' },
           ],
         },

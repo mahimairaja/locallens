@@ -1,0 +1,8 @@
+{
+  "name": "locallens",
+  "version": "0.2.0",
+  "description": "Semantic file search for AI agents. Search your codebase and documents by meaning, not just keywords.",
+  "author": "Mahimai AI",
+  "homepage": "https://github.com/mahimairaja/locallens",
+  "skills": ["search", "index", "ask", "doctor"]
+}

@@ -101,9 +101,21 @@ def main(port: int = 8811) -> None:
     """Run the MCP server."""
     mcp = create_mcp_app()
     print(
-        f"LocalLens MCP server running on http://localhost:{port}/sse\n\n"
-        "Add to Claude Desktop config (claude_desktop_config.json):\n"
-        '  "locallens": {"command": "locallens", "args": ["serve", "--mcp"]}\n',
+        f"LocalLens MCP server running on http://localhost:{port}/sse\n"
+        "\n"
+        "Add to your agent:\n"
+        "\n"
+        "  Claude Code:    claude mcp add locallens -- locallens serve --mcp\n"
+        "  Claude Desktop: Add to claude_desktop_config.json\n"
+        "  Cursor:         Add to .cursor/mcp.json\n"
+        "  Windsurf:       Add to ~/.codeium/windsurf/mcp_config.json\n"
+        "  OpenClaw:       clawhub install locallens\n"
+        "\n"
+        "Config snippet:\n"
+        '  {"mcpServers": {"locallens": {"command": "locallens",'
+        ' "args": ["serve", "--mcp"]}}}\n'
+        "\n"
+        "Docs: https://locallens.mahimai.ca/mcp/setup\n",
         file=sys.stderr,
     )
     mcp.run(transport="sse", port=port)

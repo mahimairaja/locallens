@@ -69,12 +69,12 @@ locallens ask "What was the Q3 revenue?"
 
 ## Powered by
 
-<div style="display: flex; gap: 2rem; justify-content: center; align-items: center; padding: 1.5rem 0; flex-wrap: wrap; opacity: 0.6;">
-  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">Qdrant Edge</span>
-  <span style="color: var(--vp-c-border);">|</span>
-  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">sentence-transformers</span>
-  <span style="color: var(--vp-c-border);">|</span>
-  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">Ollama</span>
-  <span style="color: var(--vp-c-border);">|</span>
-  <span style="font-family: var(--vp-font-family-mono); font-size: 0.85rem; color: var(--vp-c-text-2);">PyO3 + Rust</span>
+<div style="display: flex; gap: 2rem; justify-content: center; align-items: center; padding: 1.5rem 0; flex-wrap: wrap;">
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.95rem; color: var(--vp-c-text-1); font-weight: 500;">Qdrant Edge</span>
+  <span style="color: var(--vp-c-text-3);">|</span>
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.95rem; color: var(--vp-c-text-1); font-weight: 500;">sentence-transformers</span>
+  <span style="color: var(--vp-c-text-3);">|</span>
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.95rem; color: var(--vp-c-text-1); font-weight: 500;">Ollama</span>
+  <span style="color: var(--vp-c-text-3);">|</span>
+  <span style="font-family: var(--vp-font-family-mono); font-size: 0.95rem; color: var(--vp-c-text-1); font-weight: 500;">PyO3 + Rust</span>
 </div>
